@@ -323,6 +323,9 @@ def get_args():
     return args
 
 
+# in kioedru:
+# nohup python /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.log 2>&1 &
+# in Kioedru:
 # nohup python /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.log 2>&1 &
 def main():
     args = get_args()
