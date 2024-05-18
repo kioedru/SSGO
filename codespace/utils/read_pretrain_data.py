@@ -1,7 +1,14 @@
 import os
 import pandas as pd
 
-dataset_path = "/home/kioedru/code/SSGO/data"
+dataset_path_in_kioedru = "/home/kioedru/code/SSGO/data"
+dataset_path_in_Kioedru = "/home/kioedru/code/SSGO/data"
+
+if os.path.exists(dataset_path_in_kioedru):
+    dataset_path = dataset_path_in_kioedru
+else:
+    dataset_path = dataset_path_in_Kioedru
+
 pretrain_data_path = os.path.join(dataset_path, "pretrain")
 
 
