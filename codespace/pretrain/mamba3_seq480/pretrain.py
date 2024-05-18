@@ -323,7 +323,7 @@ def get_args():
     return args
 
 
-# nohup python /home/kioedru/code/SSGO/code/pretrain/mamba3_seq480/pretrain_model_mamba3.py> /home/kioedru/code/SSGO/code/pretrain/mamba3_seq480/pretrain.log 2>&1 &
+# nohup python /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq480/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq480/pretrain.log 2>&1 &
 def main():
     args = get_args()
 
