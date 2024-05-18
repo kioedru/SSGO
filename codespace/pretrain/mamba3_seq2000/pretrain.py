@@ -20,7 +20,7 @@ from codespace.model import aslloss
 from codespace.utils.read_pretrain_data import (
     read_ppi,
     read_feature,
-    read_seq_embed_avgpool_esm2_480,
+    read_seq_embed_avgpool_esm2_2000,
 )
 
 
@@ -71,7 +71,7 @@ class multimodesFullDataset(torch.utils.data.Dataset):
 def get_ssl_datasets(organism_num):
     ppi_matrix, ppi_id = read_ppi(organism_num)
     feature = read_feature(organism_num)
-    seq = read_seq_embed_avgpool_esm2_480(organism_num)
+    seq = read_seq_embed_avgpool_esm2_2000(organism_num)
 
     # 归一化
     ppi_matrix = minmax_scale(ppi_matrix)
@@ -323,11 +323,11 @@ def get_args():
     return args
 
 
-# nohup python /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq480/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq480/pretrain.log 2>&1 &
+# nohup python /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.log 2>&1 &
 def main():
     args = get_args()
 
-    args.model_name = f"mamba3_seq480"
+    args.model_name = f"mamba3_seq2000"
     pretrain_path_in_kioedru = f"/home/kioedru/code/SSGO/codespace/pretrain"
     pretrain_path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace/pretrain"
     if os.path.exists(pretrain_path_in_kioedru):
