@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 dataset_path_in_kioedru = "/home/kioedru/code/SSGO/data"
-dataset_path_in_Kioedru = "/home/kioedru/code/SSGO/data"
+dataset_path_in_Kioedru = "/home/Kioedru/code/SSGO/data"
 
 if os.path.exists(dataset_path_in_kioedru):
     dataset_path = dataset_path_in_kioedru
