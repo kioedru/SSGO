@@ -1,37 +1,21 @@
-# --------------------------------------------------------
-# part of code borrowed from Quert2Label
-# Written by Zhourun Wu
-# --------------------------------------------------------
 import numpy as np
 import pandas as pd
-import torch.distributed as dist
 import argparse
 import time
-from copy import deepcopy
 import random
 import torch
 import torch.nn.parallel
 from torch.optim import lr_scheduler
-import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
 import os
 
-# from pretrain_model import build_Pre_Train_Model
-import aslloss
+from codespace.model import aslloss
 
-import aslloss_4
-import copy
-
-# from read_pretrain_data import (
-#     read_feature,
-#     read_ppi,
-#     read_seq_embedding_avgpooling,
-# )
 from sklearn.preprocessing import minmax_scale
 import csv
-from predictor_module import build_predictor
+from codespace.model.predictor_module import build_predictor
 
 
 class AverageMeter(object):
@@ -79,105 +63,66 @@ class multimodesDataset(torch.utils.data.Dataset):
         return self.modes_features[0].size(0)
 
 
-from read_finetune_data import (
+from codespace.utils.read_finetune_data import (
     read_feature_by_index,
     read_labels,
     read_ppi_by_index,
-    read_seq_embedding_avgpooling_by_index,
-    read_seq_embedding_avgpooling_esm2_prott5_by_index,
-    read_seq_embedding_avgpooling_esm2_480_prott5_1024_by_index,
-    read_seq_esm2_480_by_index,
-    read_seq_prott5_1024_by_index,
-    read_esm2_480_and_prott5_1024_respectively_by_index,
-    read_seq_onehot,
+    read_seq_embed_avgpool_esm2_2000_by_index,
+    read_seq_embed_avgpool_esm2_480_by_index,
+    read_seq_embed_avgpool_prott5_1024_by_index,
 )
 
 
-def get_finetune_data(usefor, aspect, organism_num, seq_2, onehot):
+def perf_write_to_csv(args, epoch, perf, loss, time, lr):
+    if not os.path.exists(args.epoch_performance_path):
+        with open(args.epoch_performance_path, "w") as f:
+            csv.writer(f).writerow(
+                ["epoch", "loss", "time", "lr", "m-aupr", "Fmax", "M-aupr", "F1", "acc"]
+            )
+
+    with open(args.epoch_performance_path, "a") as f:
+        csv.writer(f).writerow(
+            [
+                epoch,
+                loss,
+                time,
+                lr,
+                perf["m-aupr"],
+                perf["Fmax"],
+                perf["M-aupr"],
+                perf["F1"],
+                perf["acc"],
+            ]
+        )
+
+
+# 检查并创建文件夹
+def check_and_create_folder(folder_path):
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+        print(f"文件夹 '{folder_path}' 已创建。")
+    else:
+        print(f"文件夹 '{folder_path}' 已存在。")
+
+
+# esm2:[num,2000]
+def get_finetune_data(usefor, aspect, organism_num):
     feature = read_feature_by_index(usefor, aspect, organism_num)
-    if seq_2 == 1:  # esm2+prott5 (2000,1024)
-        seq = read_seq_embedding_avgpooling_esm2_prott5_by_index(
-            usefor, aspect, organism_num
-        )
-    elif seq_2 == 0:  # esm2 (2000)
-        seq = read_seq_embedding_avgpooling_by_index(usefor, aspect, organism_num)
-    elif seq_2 == 2:  # esm2+prott5 (480,1024)
-        seq = read_seq_embedding_avgpooling_esm2_480_prott5_1024_by_index(
-            usefor, aspect, organism_num
-        )
-    elif seq_2 == 3:  # esm2(480)
-        seq = read_seq_esm2_480_by_index(usefor, aspect, organism_num)
-    elif seq_2 == 4:  # prott5(1024)
-        seq = read_seq_prott5_1024_by_index(usefor, aspect, organism_num)
     ppi_matrix = read_ppi_by_index(usefor, aspect, organism_num)
+    seq = read_seq_embed_avgpool_esm2_2000_by_index(usefor, aspect, organism_num)
     labels = read_labels(usefor, aspect, organism_num)
-    if seq_2 == 5:  # esm2(480)+prott5(1024) （分别）
-        esm2, prott5 = read_esm2_480_and_prott5_1024_respectively_by_index(
-            usefor, aspect, organism_num
-        )
-        return feature, esm2, prott5, ppi_matrix, labels
-    if onehot:
-        seq_onehot = read_seq_onehot(usefor, aspect, organism_num)
-        seq = np.concatenate((seq, seq_onehot), axis=1)  # 横向拼接onehot
     return feature, seq, ppi_matrix, labels
 
 
-def get_4features_dataset(aspect, organism_num, seq_2):
-    train_feature, train_esm2, train_prott5, train_ppi_matrix, train_labels = (
-        get_finetune_data("train", aspect, organism_num, seq_2)
-    )
-    valid_feature, valid_esm2, valid_prott5, valid_ppi_matrix, valid_labels = (
-        get_finetune_data("valid", aspect, organism_num, seq_2)
-    )
-    test_feature, test_esm2, test_prott5, test_ppi_matrix, test_labels = (
-        get_finetune_data("test", aspect, organism_num, seq_2)
-    )
-
-    combine_feature = np.concatenate((train_feature, valid_feature), axis=0)
-    combine_esm2 = np.concatenate((train_esm2, valid_esm2), axis=0)
-    combine_prott5 = np.concatenate((train_prott5, valid_prott5), axis=0)
-    combine_ppi_matrix = np.concatenate((train_ppi_matrix, valid_ppi_matrix), axis=0)
-    combine_labels = np.concatenate((train_labels, valid_labels), axis=0)
-
-    combine_feature = torch.from_numpy(combine_feature).float()
-    combine_esm2 = torch.from_numpy(combine_esm2).float()
-    combine_prott5 = torch.from_numpy(combine_prott5).float()
-    combine_ppi_matrix = torch.from_numpy(combine_ppi_matrix).float()
-    combine_labels = torch.from_numpy(combine_labels).float()
-    test_feature = torch.from_numpy(test_feature).float()
-    test_esm2 = torch.from_numpy(test_esm2).float()
-    test_prott5 = torch.from_numpy(test_prott5).float()
-    test_ppi_matrix = torch.from_numpy(test_ppi_matrix).float()
-    test_labels = torch.from_numpy(test_labels).float()
-
-    train_dataset = multimodesDataset(
-        4,
-        [combine_ppi_matrix, combine_feature, combine_esm2, combine_prott5],
-        combine_labels,
-    )
-    test_dataset = multimodesDataset(
-        4, [test_ppi_matrix, test_feature, test_esm2, test_prott5], test_labels
-    )
-    modefeature_lens = [
-        combine_ppi_matrix.shape[1],
-        combine_feature.shape[1],
-        combine_esm2.shape[1],
-        combine_prott5.shape[1],
-    ]
-    print("combine_ppi_matrix = ", combine_ppi_matrix.shape)
-
-    return train_dataset, test_dataset, modefeature_lens
-
-
-def get_dataset(aspect, organism_num, seq_2, onehot):
+def get_dataset(aspect, organism_num):
     train_feature, train_seq, train_ppi_matrix, train_labels = get_finetune_data(
-        "train", aspect, organism_num, seq_2, onehot
+        "train", aspect, organism_num
     )
     valid_feature, valid_seq, valid_ppi_matrix, valid_labels = get_finetune_data(
-        "valid", aspect, organism_num, seq_2, onehot
+        "valid", aspect, organism_num
     )
     test_feature, test_seq, test_ppi_matrix, test_labels = get_finetune_data(
-        "test", aspect, organism_num, seq_2, onehot
+        "test", aspect, organism_num
     )
 
     combine_feature = np.concatenate((train_feature, valid_feature), axis=0)
@@ -436,26 +381,58 @@ def get_args():
     return args
 
 
-# python CFAGO-code/self_supervised_leaning.py --org human --dataset_dir Dataset/human --output human_result --dist-url tcp://127.0.0.1:3723 --seed 1329765522 --dim_feedforward 512 --nheads 8 --dropout 0.1 --attention_layers 6 --batch-size 32 --activation gelu --epochs 5000 --lr 1e-5
-
-
-# nohup python CFAGO-code/self_supervised_leaning.py --dist-url tcp://127.0.0.1:3732 --aspect P> log/pre_train/P.log 2>&1 &
 def main():
     args = get_args()
-    args.epochs = 200
-    args.se = False
-    args.pretrain_update = 0  # 0全更新，1不更新，2更新一半
+    args.input_num = 3
+    args.epochs = 100
+    args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
+    if args.pretrain_update == 0:
+        args.update_epoch = args.epochs
+    elif args.pretrain_update == 1:
+        args.update_epoch = 0
+    elif args.pretrain_update == 2:
+        args.update_epoch = int(args.epochs / 2)
+
     args.org = "9606"
     # args.aspect = "P"
     # args.num_class = int(45)
     # args.seed = int(
     #     1329765519
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
-    model_name = f"mamba3_seq480"
+    args.model_name = f"mamba3_seq2000"
 
-    args.pretrained_model = f"/home/kioedru/code/CFAGO/CFAGO_seq/result/model/pretrain_model_{model_name}.pkl"
-    args.finetune_model = f"/home/kioedru/code/CFAGO/CFAGO_seq/result/model/finetune_model_{args.aspect}_{model_name}.pkl"
-    args.performance_path = f"/home/kioedru/code/CFAGO/CFAGO_seq/result/log/finetune_performance_{model_name}.csv"
+    path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
+    path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace"
+    if os.path.exists(path_in_kioedru):
+        args.path = path_in_kioedru
+    else:
+        args.path = path_in_Kioedru
+
+    args.finetune_path = os.path.join(
+        args.path,
+        "finetune",
+        args.model_name,
+        args.aspect,
+        f"{args.seed}",
+        f"{args.update_epoch}:{args.epochs}",
+    )
+    args.pretrained_model = os.path.join(
+        args.path, "pretrain", args.model_name, f"{args.model_name}.pkl"
+    )
+    args.finetune_model_path = os.path.join(args.finetune_path, f"epoch_model")
+    check_and_create_folder(args.finetune_model_path)
+
+    # args.finetune_model = f"/home/kioedru/code/CFAGO/CFAGO_seq/result/model/finetune_model_{args.aspect}_{model_name}.pkl"
+    args.performance_path = os.path.join(
+        args.path,
+        "finetune",
+        args.aspect,
+        f"{args.seed}",
+        f"finetune_performance_{args.model_name}.csv",
+    )
+    args.epoch_performance_path = os.path.join(
+        args.finetune_path, f"epoch_performance.csv"
+    )
     args.device = "cuda:0"
 
     args.dist_url = "tcp://127.0.0.1:3723"
@@ -485,7 +462,7 @@ def main_worker(args):
 
     # 准备数据集,esm2+prott5时 seq_2=True
     train_dataset, test_dataset, args.modesfeature_len = get_dataset(
-        args.aspect, "9606", seq_2=3, onehot=False
+        args.aspect, "9606"
     )
     args.encode_structure = [1024]
 
@@ -573,6 +550,7 @@ def main_worker(args):
     finetune(
         args,
         train_loader,
+        test_loader,
         predictor_model,
         loss,
         predictor_model_optimizer,
@@ -580,10 +558,7 @@ def main_worker(args):
         args.epochs,
         args.device,
     )
-    pd.to_pickle(
-        predictor_model,
-        args.finetune_model,
-    )
+
     # 导入已微调好的模型
     # predictor_model = pd.read_pickle(
     #     "/home/Kioedru/code/CFAGO_seq/result/model/finetune_model_{args.aspect}.pkl"
@@ -593,7 +568,7 @@ def main_worker(args):
     if not os.path.exists(args.performance_path):
         with open(args.performance_path, "w") as f:
             csv.writer(f).writerow(
-                ["features", "aspect", "m-aupr", "M-aupr", "F1", "acc", "Fmax"]
+                ["features", "aspect", "m-aupr", "Fmax", "M-aupr", "F1", "acc"]
             )
 
     with open(args.performance_path, "a") as f:
@@ -602,27 +577,18 @@ def main_worker(args):
                 "ppi+feature+seq",
                 args.aspect,
                 perf["m-aupr"],
+                perf["Fmax"],
                 perf["M-aupr"],
                 perf["F1"],
                 perf["acc"],
-                perf["Fmax"],
             ]
         )
-
-
-def create_log():
-    # 定义csv文件的路径
-    csv_path = "/home/kioedru/code/CFAGO/CFAGO_seq/result/log/finetune_log.csv"
-
-    with open(csv_path, "w") as f:
-        csv.writer(f).writerow(["Epoch", "Loss", "lr", "Time"])
-
-    return csv_path
 
 
 def finetune(
     args,
     data_loader,
+    test_loader,
     model,
     loss,
     optimizer,
@@ -630,7 +596,6 @@ def finetune(
     num_epochs,
     device,
 ):
-    csv_path = create_log()
 
     net = model.to(device)
     net.train()
@@ -669,19 +634,25 @@ def finetune(
             batch_count += 1
         steplr.step()
 
-        # 添加数据到csv
-        with open(csv_path, "a") as f:
-            csv.writer(f).writerow(
-                [
-                    epoch,
-                    train_l_sum / batch_count,
-                    optimizer.param_groups[1]["lr"],
-                    time.time() - start,
-                ]
+        # 每轮都测试
+        perf = evaluate_performance()
+        with torch.no_grad():
+            perf = evaluate(test_loader, net, args.device)
+            perf_write_to_csv(
+                args,
+                epoch,
+                perf,
+                loss=train_l_sum / batch_count,
+                time=time.time() - start,
+                lr=optimizer.param_groups[1]["lr"],
             )
+        # 保存每轮的model参数字典
+        torch.save(
+            net.state_dict(), os.path.join(args.finetune_model_path, f"{epoch}.pkl")
+        )
 
 
-from evaluate_performance import evaluate_performance
+from codespace.utils.evaluate_performance import evaluate_performance
 
 
 @torch.no_grad()

@@ -1,25 +1,11 @@
-"""
-Most borrow from DETR except:
-    * remove self-attention by default.
-
-Copy-paste from torch.nn.Transformer with modifications:
-    * positional encodings are passed in MHattention
-    * extra LN at the end of encoder is removed
-    * decoder returns a stack of activations from all decoding layers
-    * using modified multihead attention from nn_CrossModalMultiHeadAttention.py
-"""
-
 import copy
 from typing import Optional, List
 
-# import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
 from mamba_ssm import Mamba
 
 # from torch.nn import MultiheadAttention
-
-# import gvt
 
 
 class EncoderTransformer(nn.Module):
