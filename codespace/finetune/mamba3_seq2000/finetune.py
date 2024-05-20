@@ -16,6 +16,7 @@ from codespace.model import aslloss
 from sklearn.preprocessing import minmax_scale
 import csv
 from codespace.model.predictor_module import build_predictor
+import sys
 
 
 class AverageMeter(object):
@@ -383,6 +384,7 @@ def get_args():
 
 def main():
     args = get_args()
+    args.device = "cuda:0"
     args.input_num = 3
     args.epochs = 100
     args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
@@ -416,6 +418,9 @@ def main():
         f"{args.seed}",
         f"{args.update_epoch}:{args.epochs}",
     )
+    sys.path.append(
+        os.path.join(args.path, "pretrain", args.model_name)
+    )  # 加入模型文件的父目录
     args.pretrained_model = os.path.join(
         args.path, "pretrain", args.model_name, f"{args.model_name}.pkl"
     )
@@ -426,14 +431,13 @@ def main():
     args.performance_path = os.path.join(
         args.path,
         "finetune",
-        args.aspect,
-        f"{args.seed}",
+        args.model_name,
         f"finetune_performance_{args.model_name}.csv",
     )
+
     args.epoch_performance_path = os.path.join(
         args.finetune_path, f"epoch_performance.csv"
     )
-    args.device = "cuda:0"
 
     args.dist_url = "tcp://127.0.0.1:3723"
     args.dim_feedforward = int(512)
@@ -570,7 +574,6 @@ def main_worker(args):
             csv.writer(f).writerow(
                 ["features", "aspect", "m-aupr", "Fmax", "M-aupr", "F1", "acc"]
             )
-
     with open(args.performance_path, "a") as f:
         csv.writer(f).writerow(
             [
@@ -583,6 +586,11 @@ def main_worker(args):
                 perf["acc"],
             ]
         )
+    # 保存微调模型
+    torch.save(
+        predictor_model.state_dict(),
+        os.path.join(args.finetune_path, f"final_model.pkl"),
+    )
 
 
 def finetune(
@@ -635,7 +643,6 @@ def finetune(
         steplr.step()
 
         # 每轮都测试
-        perf = evaluate_performance()
         with torch.no_grad():
             perf = evaluate(test_loader, net, args.device)
             perf_write_to_csv(
@@ -647,9 +654,9 @@ def finetune(
                 lr=optimizer.param_groups[1]["lr"],
             )
         # 保存每轮的model参数字典
-        torch.save(
-            net.state_dict(), os.path.join(args.finetune_model_path, f"{epoch}.pkl")
-        )
+        # torch.save(
+        #     net.state_dict(), os.path.join(args.finetune_model_path, f"{epoch}.pkl")
+        # )
 
 
 from codespace.utils.evaluate_performance import evaluate_performance
