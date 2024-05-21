@@ -408,7 +408,7 @@ def get_args():
 
 def main():
     args = get_args()
-    args.device = "cuda:0"
+    args.device = "cuda:1"
     args.input_num = 3
     # args.epochs = 100
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
@@ -529,7 +529,7 @@ def main_worker(args):
     torch.cuda.empty_cache()
 
     # 载入微调模型
-    finetune_pre_model = torch.load(args.pretrained_model, map_location="cuda:0")
+    finetune_pre_model = torch.load(args.pretrained_model, map_location=args.device)
     # 创建预测模型
     predictor_model = build_predictor(finetune_pre_model, args)
 
