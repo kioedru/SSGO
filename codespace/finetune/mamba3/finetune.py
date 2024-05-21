@@ -410,8 +410,8 @@ def main():
     args = get_args()
     args.device = "cuda:1"
     args.input_num = 2
-    args.epochs = 100
-    args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
+    # args.epochs = 100
+    # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
     if args.pretrain_update == 0:
         args.update_epoch = args.epochs
     elif args.pretrain_update == 1:
@@ -420,11 +420,11 @@ def main():
         args.update_epoch = int(args.epochs / 2)
 
     args.org = "9606"
-    args.aspect = "P"
-    args.num_class = int(45)
-    args.seed = int(
-        1329765519
-    )  #  1329765522  132976111  1329765525    1329765529  1329765519
+    # args.aspect = "P"
+    # args.num_class = int(45)
+    # args.seed = int(
+    #     1329765519
+    # )  #  1329765522  132976111  1329765525    1329765529  1329765519
     args.model_name = f"mamba3"
 
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
