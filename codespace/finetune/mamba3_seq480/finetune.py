@@ -373,6 +373,13 @@ def parser_args():
     parser.add_argument(
         "--kill-stop", action="store_true", default=False, help="apply early stop"
     )
+    parser.add_argument(
+        "--pretrain-update",
+        default=2,
+        type=int,
+        help="参数更新方式",
+    )
+
     args = parser.parse_args()
     return args
 
@@ -386,8 +393,8 @@ def main():
     args = get_args()
     args.device = "cuda:0"
     args.input_num = 3
-    args.epochs = 100
-    args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
+    # args.epochs = 100
+    # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
     if args.pretrain_update == 0:
         args.update_epoch = args.epochs
     elif args.pretrain_update == 1:
@@ -428,12 +435,6 @@ def main():
     check_and_create_folder(args.finetune_model_path)
 
     # args.finetune_model = f"/home/kioedru/code/CFAGO/CFAGO_seq/result/model/finetune_model_{args.aspect}_{model_name}.pkl"
-    args.performance_path = os.path.join(
-        args.path,
-        "finetune",
-        args.model_name,
-        f"finetune_performance_{args.model_name}.csv",
-    )
 
     args.epoch_performance_path = os.path.join(
         args.finetune_path, f"epoch_performance.csv"
@@ -567,25 +568,7 @@ def main_worker(args):
     # predictor_model = pd.read_pickle(
     #     "/home/Kioedru/code/CFAGO_seq/result/model/finetune_model_{args.aspect}.pkl"
     # ).to(args.device)
-    perf = evaluate(test_loader, predictor_model, args.device)
 
-    if not os.path.exists(args.performance_path):
-        with open(args.performance_path, "w") as f:
-            csv.writer(f).writerow(
-                ["features", "aspect", "m-aupr", "Fmax", "M-aupr", "F1", "acc"]
-            )
-    with open(args.performance_path, "a") as f:
-        csv.writer(f).writerow(
-            [
-                "ppi+feature+seq",
-                args.aspect,
-                perf["m-aupr"],
-                perf["Fmax"],
-                perf["M-aupr"],
-                perf["F1"],
-                perf["acc"],
-            ]
-        )
     # 保存微调模型
     torch.save(
         predictor_model.state_dict(),
