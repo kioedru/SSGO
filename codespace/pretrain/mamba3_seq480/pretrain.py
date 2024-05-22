@@ -16,7 +16,7 @@ import csv
 from sklearn.preprocessing import minmax_scale
 
 from pretrain_model_mamba3 import build_Pre_Train_Model
-from codespace.model import aslloss
+from codespace.model import aslloss_adaptive
 from codespace.utils.read_pretrain_data import (
     read_ppi,
     read_feature,
@@ -378,7 +378,7 @@ def main_worker(args):
     pre_model = build_Pre_Train_Model(args)
 
     # 使用对称损失函数
-    pretrain_loss = aslloss.pretrainLossOptimized(
+    pretrain_loss = aslloss_3.pretrainLossOptimized(
         clip=args.loss_clip,
         eps=args.eps,
     )

@@ -11,7 +11,7 @@ import torch.utils.data
 import torch.utils.data.distributed
 import os
 
-from codespace.model import aslloss
+from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
@@ -495,7 +495,7 @@ def main_worker(args):
     )
 
     # 定义损失函数
-    loss = aslloss.AsymmetricLossOptimized(
+    loss = aslloss_3.AsymmetricLossOptimized(
         gamma_neg=args.gamma_neg,
         gamma_pos=args.gamma_pos,
         clip=args.loss_clip,
