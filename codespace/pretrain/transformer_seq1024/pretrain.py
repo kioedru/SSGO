@@ -15,7 +15,7 @@ import copy
 import csv
 from sklearn.preprocessing import minmax_scale
 
-from codespace.pretrain.transformer_seq2000.pretrain_model_transformer import (
+from pretrain_model_transformer import (
     build_Pre_Train_Model,
 )
 from codespace.model import aslloss_adaptive
