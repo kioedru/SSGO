@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import math
 
-from codespace.model.multihead_attention import _get_activation_fn
+from codespace.model.multihead_attention_transformer import _get_activation_fn
 
 
 class GroupWiseLinear(nn.Module):
