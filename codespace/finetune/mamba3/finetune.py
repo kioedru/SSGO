@@ -672,7 +672,6 @@ def evaluate(test_loader, predictor_model, device):
     for proteins, label in test_loader:
         proteins[0] = proteins[0].to(device)
         proteins[1] = proteins[1].to(device)
-        proteins[2] = proteins[2].to(device)
         label = label.to(device)
 
         # compute output
