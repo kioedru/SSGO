@@ -495,7 +495,7 @@ def main_worker(args):
     )
 
     # 定义损失函数
-    loss = aslloss_3.AsymmetricLossOptimized(
+    loss = aslloss_adaptive.AsymmetricLossOptimized(
         gamma_neg=args.gamma_neg,
         gamma_pos=args.gamma_pos,
         clip=args.loss_clip,

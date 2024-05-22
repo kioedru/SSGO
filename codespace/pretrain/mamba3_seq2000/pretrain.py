@@ -378,7 +378,7 @@ def main_worker(args):
     pre_model = build_Pre_Train_Model(args)
 
     # 使用对称损失函数
-    pretrain_loss = aslloss_3.pretrainLossOptimized(
+    pretrain_loss = aslloss_adaptive.pretrainLossOptimized(
         clip=args.loss_clip,
         eps=args.eps,
     )
