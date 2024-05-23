@@ -106,11 +106,11 @@ def check_and_create_folder(folder_path):
         print(f"文件夹 '{folder_path}' 已存在。")
 
 
-# prott5:[num,1024]
+# esm2:[num,480]
 def get_finetune_data(usefor, aspect, organism_num):
     feature = read_feature_by_index(usefor, aspect, organism_num)
     ppi_matrix = read_ppi_by_index(usefor, aspect, organism_num)
-    seq = read_seq_embed_avgpool_prott5_1024_by_index(usefor, aspect, organism_num)
+    seq = read_seq_embed_avgpool_esm2_480_by_index(usefor, aspect, organism_num)
     labels = read_labels(usefor, aspect, organism_num)
     return feature, seq, ppi_matrix, labels
 
@@ -408,7 +408,7 @@ def main():
     # args.seed = int(
     #     1329765519
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
-    args.model_name = f"transformer_seq1024"
+    args.model_name = f"transformer_seq2000"
 
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
     path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace"

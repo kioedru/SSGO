@@ -356,7 +356,7 @@ def main():
     args.activation = "gelu"
     args.epochs = int(5000)
     args.lr = float(1e-5)
-    args.device = "cuda:0"
+    args.device = "cuda:1"
 
     # # 指定随机种子初始化随机数生成器（保证实验的可复现性）
     if args.seed is not None:
