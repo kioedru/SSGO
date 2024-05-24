@@ -1,7 +1,12 @@
 import subprocess
 
-aspects = ["P", "F", "C"]
-num_class = {"P": 45, "F": 38, "C": 35}
+# aspects = ["P", "F", "C"]
+aspects = ["F", "C"]
+
+# num_class = {"P": 45, "F": 38, "C": 35}
+num_class = {"F": 38, "C": 35}
+
+
 # pretrain_updates = [2, 1, 0]
 pretrain_updates = [2]
 seeds = [132976111, 1329765519, 1329765522, 1329765525, 1329765529]

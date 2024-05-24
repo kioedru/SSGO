@@ -162,7 +162,7 @@ def get_dataset(aspect, LLM_name, organism_num):
         combine_ppi_matrix.shape[1],
         combine_feature.shape[1],
         combine_seq.shape[1],
-        combine_residue.shape[2],
+        combine_residue.shape[1],
     ]
     print("combine_ppi_matrix = ", combine_ppi_matrix.shape)
 
