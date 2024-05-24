@@ -328,12 +328,13 @@ def get_args():
 
 
 # in kioedru:
-# nohup python /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.log 2>&1 &
+# nohup python /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq1024_new/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq1024_new/pretrain.log 2>&1 &
 # in Kioedru:
-# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.log 2>&1 &
+# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024_new/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024_new/pretrain.log 2>&1 &
 def main():
     args = get_args()
 
+    args.device = "cuda:1"
     args.model_name = f"transformer_seq1024_new"
     pretrain_path_in_kioedru = f"/home/kioedru/code/SSGO/codespace/pretrain"
     pretrain_path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace/pretrain"
@@ -358,7 +359,6 @@ def main():
     args.activation = "gelu"
     args.epochs = int(5000)
     args.lr = float(1e-5)
-    args.device = "cuda:1"
 
     # # 指定随机种子初始化随机数生成器（保证实验的可复现性）
     if args.seed is not None:
