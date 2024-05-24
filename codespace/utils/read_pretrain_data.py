@@ -57,6 +57,14 @@ def read_seq_embed_avgpool_prott5_1024(organism_num):
     return seq
 
 
+# prott5:[19385,seq_len,1024]->[19385, 1024]
+def read_seq_embed_avgpool_prott5_1024_new(organism_num):
+    file_name = f"{organism_num}_seq_embed_avgpool_prott5_1024_new.pkl"
+    file_path = os.path.join(pretrain_data_path, file_name)
+    seq = pd.read_pickle(file_path)
+    return seq
+
+
 # 该文件目前未实现：one_hot_sum (19385,26)
 def read_seq_one_hot_sum(organism_num):
     file_name = f"{organism_num}_seq_one_hot_sum.pkl"
