@@ -8,6 +8,7 @@ from codespace.utils.read_pretrain_data import (
 )
 import pandas as pd
 import os
+import torch
 from sklearn.preprocessing import minmax_scale
 
 dataset_path_in_kioedru = "/home/kioedru/code/SSGO/data"
@@ -118,3 +119,17 @@ def read_labels(usefor, aspect, organism_num):
     encode = mlb.fit_transform(df["annotations"])
     encode = np.array(encode)
     return encode
+
+
+# 获取微调数据集的残基embed
+def read_residue(usefor, aspect, model_name, organism_num):
+    residue_name = f"{usefor}_residue_{aspect}.pkl"
+    file_path = os.path.join(
+        finetune_data_path, organism_num, f"residue_{model_name}", residue_name
+    )
+
+    residue = pd.read_pickle(file_path)
+    layernorm = torch.nn.LayerNorm(480)
+    residue = layernorm(residue)
+    # print(torch.isnan(residue).any())
+    return residue.detach()
