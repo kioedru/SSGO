@@ -106,11 +106,11 @@ def check_and_create_folder(folder_path):
         print(f"文件夹 '{folder_path}' 已存在。")
 
 
-# esm2:[num,480]
+# esm2:[num,2000]
 def get_finetune_data(usefor, aspect, organism_num):
     feature = read_feature_by_index(usefor, aspect, organism_num)
     ppi_matrix = read_ppi_by_index(usefor, aspect, organism_num)
-    seq = read_seq_embed_avgpool_esm2_480_by_index(usefor, aspect, organism_num)
+    seq = read_seq_embed_avgpool_esm2_2000_by_index(usefor, aspect, organism_num)
     labels = read_labels(usefor, aspect, organism_num)
     return feature, seq, ppi_matrix, labels
 
@@ -391,7 +391,7 @@ def get_args():
 
 def main():
     args = get_args()
-    args.device = "cuda:0"
+    args.device = "cuda:1"
     args.input_num = 3
     # args.epochs = 100
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
