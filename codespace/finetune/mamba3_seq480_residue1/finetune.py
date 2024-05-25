@@ -15,7 +15,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module_residue import build_predictor
+from codespace.model.predictor_module_residue1 import build_predictor
 import sys
 
 
@@ -422,7 +422,7 @@ def main():
     # args.seed = int(
     #     132976111
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
-    args.model_name = f"mamba3_seq480_residue"
+    args.model_name = f"mamba3_seq480_residue1"
     args.pretrain_model_name = f"mamba3_seq480"
 
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
