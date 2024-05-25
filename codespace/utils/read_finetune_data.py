@@ -4,6 +4,7 @@ from codespace.utils.read_pretrain_data import (
     read_seq_embed_avgpool_esm2_2000,
     read_seq_embed_avgpool_esm2_480,
     read_seq_embed_avgpool_prott5_1024,
+    read_seq_embed_avgpool_prott5_1024_new,
     read_seq_one_hot_sum,
 )
 import pandas as pd
@@ -83,6 +84,16 @@ def read_seq_embed_avgpool_prott5_1024_by_index(usefor, aspect, organism_num):
     df = read_df(usefor, aspect, organism_num)
     index = get_ppi_index(df, organism_num)
     seq_prott5_emb = read_seq_embed_avgpool_prott5_1024(organism_num)
+    selected_rows_prott5 = seq_prott5_emb[index]
+    selected_rows = minmax_scale(selected_rows_prott5)
+    return selected_rows
+
+
+# prott5:[num,1024]
+def read_seq_embed_avgpool_prott5_1024_new_by_index(usefor, aspect, organism_num):
+    df = read_df(usefor, aspect, organism_num)
+    index = get_ppi_index(df, organism_num)
+    seq_prott5_emb = read_seq_embed_avgpool_prott5_1024_new(organism_num)
     selected_rows_prott5 = seq_prott5_emb[index]
     selected_rows = minmax_scale(selected_rows_prott5)
     return selected_rows

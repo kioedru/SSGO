@@ -15,7 +15,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module_residue2 import build_predictor
+from codespace.model.predictor_module import build_predictor
 import sys
 
 
@@ -49,17 +49,16 @@ class AverageMeter(object):
 
 
 class multimodesDataset(torch.utils.data.Dataset):
-    def __init__(self, num_modes, modes_features, labels, residue):
+    def __init__(self, num_modes, modes_features, labels):
         self.modes_features = modes_features
         self.labels = labels
-        self.residue = residue
         self.num_modes = num_modes
 
     def __getitem__(self, index):
         modes_features = []
         for i in range(self.num_modes):
             modes_features.append(self.modes_features[i][index])
-        return modes_features, self.labels[index], self.residue[index]
+        return modes_features, self.labels[index]
 
     def __len__(self):
         return self.modes_features[0].size(0)
@@ -72,7 +71,7 @@ from codespace.utils.read_finetune_data import (
     read_seq_embed_avgpool_esm2_2000_by_index,
     read_seq_embed_avgpool_esm2_480_by_index,
     read_seq_embed_avgpool_prott5_1024_by_index,
-    read_residue,
+    read_seq_embed_avgpool_prott5_1024_new_by_index,
 )
 
 
@@ -108,61 +107,50 @@ def check_and_create_folder(folder_path):
         print(f"文件夹 '{folder_path}' 已存在。")
 
 
-# esm2:[num,480]
-def get_finetune_data(usefor, aspect, LLM_name, organism_num):
+# prott5:[num,1024]
+def get_finetune_data(usefor, aspect, organism_num):
     feature = read_feature_by_index(usefor, aspect, organism_num)
     ppi_matrix = read_ppi_by_index(usefor, aspect, organism_num)
-    seq = read_seq_embed_avgpool_esm2_480_by_index(usefor, aspect, organism_num)
+    seq = read_seq_embed_avgpool_prott5_1024_new_by_index(usefor, aspect, organism_num)
     labels = read_labels(usefor, aspect, organism_num)
-    residue = read_residue(usefor, aspect, LLM_name, organism_num)
-    return feature, seq, ppi_matrix, labels, residue
+    return feature, seq, ppi_matrix, labels
 
 
-def get_dataset(aspect, LLM_name, organism_num):
-    train_feature, train_seq, train_ppi_matrix, train_labels, train_residue = (
-        get_finetune_data("train", aspect, LLM_name, organism_num)
+def get_dataset(aspect, organism_num):
+    train_feature, train_seq, train_ppi_matrix, train_labels = get_finetune_data(
+        "train", aspect, organism_num
     )
-    valid_feature, valid_seq, valid_ppi_matrix, valid_labels, valid_residue = (
-        get_finetune_data("valid", aspect, LLM_name, organism_num)
+    valid_feature, valid_seq, valid_ppi_matrix, valid_labels = get_finetune_data(
+        "valid", aspect, organism_num
     )
-    test_feature, test_seq, test_ppi_matrix, test_labels, test_residue = (
-        get_finetune_data("test", aspect, LLM_name, organism_num)
+    test_feature, test_seq, test_ppi_matrix, test_labels = get_finetune_data(
+        "test", aspect, organism_num
     )
 
     combine_feature = np.concatenate((train_feature, valid_feature), axis=0)
     combine_seq = np.concatenate((train_seq, valid_seq), axis=0)
     combine_ppi_matrix = np.concatenate((train_ppi_matrix, valid_ppi_matrix), axis=0)
     combine_labels = np.concatenate((train_labels, valid_labels), axis=0)
-    # residue是tensor
-    combine_residue = torch.cat((train_residue, valid_residue), dim=0)
 
     combine_feature = torch.from_numpy(combine_feature).float()
     combine_seq = torch.from_numpy(combine_seq).float()
     combine_ppi_matrix = torch.from_numpy(combine_ppi_matrix).float()
     combine_labels = torch.from_numpy(combine_labels).float()
-    # residue已经是tensor
-    # combine_residue = torch.from_numpy(combine_residue).float()
     test_feature = torch.from_numpy(test_feature).float()
     test_seq = torch.from_numpy(test_seq).float()
     test_ppi_matrix = torch.from_numpy(test_ppi_matrix).float()
     test_labels = torch.from_numpy(test_labels).float()
-    # residue已经是tensor
-    # test_residue = torch.from_numpy(test_residue).float()
 
     train_dataset = multimodesDataset(
-        3,
-        [combine_ppi_matrix, combine_feature, combine_seq],
-        combine_labels,
-        combine_residue,
+        3, [combine_ppi_matrix, combine_feature, combine_seq], combine_labels
     )
     test_dataset = multimodesDataset(
-        3, [test_ppi_matrix, test_feature, test_seq], test_labels, test_residue
+        3, [test_ppi_matrix, test_feature, test_seq], test_labels
     )
     modefeature_lens = [
         combine_ppi_matrix.shape[1],
         combine_feature.shape[1],
         combine_seq.shape[1],
-        combine_residue.shape[1],
     ]
     print("combine_ppi_matrix = ", combine_ppi_matrix.shape)
 
@@ -404,8 +392,7 @@ def get_args():
 
 def main():
     args = get_args()
-    args.LLM_name = "esm2"
-    args.device = "cuda:1"
+    args.device = "cuda:0"
     args.input_num = 3
     # args.epochs = 100
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
@@ -420,10 +407,9 @@ def main():
     # args.aspect = "P"
     # args.num_class = int(45)
     # args.seed = int(
-    #     132976111
+    #     1329765519
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
-    args.model_name = f"mamba3_seq480_residue2"
-    args.pretrain_model_name = f"mamba3_seq480"
+    args.model_name = f"mamba3_seq1024_new"
 
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
     path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace"
@@ -441,13 +427,10 @@ def main():
         f"{args.update_epoch}:{args.epochs}",
     )
     sys.path.append(
-        os.path.join(args.path, "pretrain", args.pretrain_model_name)
+        os.path.join(args.path, "pretrain", args.model_name)
     )  # 加入模型文件的父目录
     args.pretrained_model = os.path.join(
-        args.path,
-        "pretrain",
-        args.pretrain_model_name,
-        f"{args.pretrain_model_name}.pkl",
+        args.path, "pretrain", args.model_name, f"{args.model_name}.pkl"
     )
     args.finetune_model_path = os.path.join(args.finetune_path, f"epoch_model")
     check_and_create_folder(args.finetune_model_path)
@@ -485,7 +468,7 @@ def main_worker(args):
 
     # 准备数据集,esm2+prott5时 seq_2=True
     train_dataset, test_dataset, args.modesfeature_len = get_dataset(
-        args.aspect, args.LLM_name, "9606"
+        args.aspect, "9606"
     )
     args.encode_structure = [1024]
 
@@ -626,14 +609,14 @@ def finetune(
         start = time.time()
         batch_count = 0
         train_l_sum = 0.0
-        for protein_data, label, residue in data_loader:
+        for protein_data, label in data_loader:
 
             protein_data[0] = protein_data[0].to(device)
             protein_data[1] = protein_data[1].to(device)
             protein_data[2] = protein_data[2].to(device)
             label = label.to(device)
-            residue = residue.to(device)
-            rec, output = net(protein_data, residue)
+
+            rec, output = net(protein_data)
             l = loss(rec, output, label)
             optimizer.zero_grad()
             l.backward()
@@ -671,15 +654,14 @@ def evaluate(test_loader, predictor_model, device):
     all_output_sm = []
     all_label = []
     predictor_model = predictor_model.to(device)
-    for proteins, label, residue in test_loader:
+    for proteins, label in test_loader:
         proteins[0] = proteins[0].to(device)
         proteins[1] = proteins[1].to(device)
         proteins[2] = proteins[2].to(device)
         label = label.to(device)
-        residue = residue.to(device)
 
         # compute output
-        rec, output = predictor_model(proteins, residue)
+        rec, output = predictor_model(proteins)
         output_sm = torch.nn.functional.sigmoid(output)
 
         # collect output and label for metric calculation
