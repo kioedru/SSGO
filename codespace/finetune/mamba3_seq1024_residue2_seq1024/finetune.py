@@ -405,8 +405,8 @@ def get_args():
 def main():
     args = get_args()
     args.LLM_name = "prott5"
-    args.device = "cuda:0"
-    torch.cuda.empty_cache()
+    args.device = "cuda:1"
+    # torch.cuda.empty_cache()
     args.input_num = 3
     # args.epochs = 100
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
