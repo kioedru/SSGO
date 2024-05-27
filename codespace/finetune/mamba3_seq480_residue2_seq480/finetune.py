@@ -405,7 +405,7 @@ def get_args():
 def main():
     args = get_args()
     args.LLM_name = "esm2"
-    args.device = "cuda:1"
+    args.device = "cuda:0"
     args.input_num = 3
     # args.epochs = 100
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
@@ -422,7 +422,7 @@ def main():
     # args.seed = int(
     #     132976111
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
-    args.model_name = f"mamba3_seq480_residue2"
+    args.model_name = f"mamba3_seq480_residue2_seq480"
     args.pretrain_model_name = f"mamba3_seq480"
 
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"

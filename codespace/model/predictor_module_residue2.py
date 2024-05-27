@@ -77,8 +77,8 @@ class FC_Decoder(nn.Module):
         self.dropout1 = torch.nn.Dropout(dropout)
 
         self.output_layer3 = nn.Linear(2 * (dim_feedforward // input_num), num_class)
-        self.residue_attn = Mamba(d_model=480, d_state=16, d_conv=4, expand=2)
-        self.residue_linear1 = nn.Linear(480, dim_feedforward // input_num)
+        self.residue_attn = Mamba(d_model=residue_dim, d_state=16, d_conv=4, expand=2)
+        self.residue_linear1 = nn.Linear(residue_dim, dim_feedforward // input_num)
         self.output_layer2 = nn.Linear(2 * (dim_feedforward // input_num), num_class)
 
     def forward(self, hs, residue):  # hs[3, 32, 512] residue[32,2000,480]

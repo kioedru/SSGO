@@ -140,7 +140,7 @@ def read_residue(usefor, aspect, model_name, organism_num):
     )
 
     residue = pd.read_pickle(file_path)
-    layernorm = torch.nn.LayerNorm(480)
+    layernorm = torch.nn.LayerNorm(residue.shape[2])
     residue = layernorm(residue)
     # print(torch.isnan(residue).any())
     return residue.detach()
