@@ -1,7 +1,7 @@
 import subprocess
 
-# aspects = ["P", "F", "C"]
-aspects = ["C", "F"]
+aspects = ["P", "F", "C"]
+# aspects = ["C", "F"]
 
 num_class = {"P": 45, "F": 38, "C": 35}
 
