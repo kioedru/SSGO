@@ -140,7 +140,10 @@ def read_residue(usefor, aspect, model_name, organism_num):
     )
 
     residue = pd.read_pickle(file_path)
-    layernorm = torch.nn.LayerNorm(residue.shape[2])
-    residue = layernorm(residue)
     # print(torch.isnan(residue).any())
-    return residue.detach()
+    # 找到最小和最大值
+    min_val = torch.min(residue)
+    max_val = torch.max(residue)
+    # 进行归一化
+    normalized_tensor = (residue - min_val) / (max_val - min_val)
+    return normalized_tensor.detach()
