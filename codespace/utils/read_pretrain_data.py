@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+import h5py
+import torch
 
 dataset_path_in_kioedru = "/home/kioedru/code/SSGO/data"
 dataset_path_in_Kioedru = "/home/Kioedru/code/SSGO/data"
@@ -60,6 +62,14 @@ def read_seq_embed_avgpool_prott5_1024(organism_num):
 # prott5:[19385,seq_len,1024]->[19385, 1024]
 def read_seq_embed_avgpool_prott5_1024_new(organism_num):
     file_name = f"{organism_num}_seq_embed_avgpool_prott5_1024_new.pkl"
+    file_path = os.path.join(pretrain_data_path, file_name)
+    seq = pd.read_pickle(file_path)
+    return seq
+
+
+# 按照ppi_id的顺序排列的蛋白质氨基酸序列
+def read_seq(organism_num):
+    file_name = f"{organism_num}_seq.pkl"
     file_path = os.path.join(pretrain_data_path, file_name)
     seq = pd.read_pickle(file_path)
     return seq
