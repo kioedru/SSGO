@@ -176,5 +176,5 @@ class pretrainLossOptimized(nn.Module):
                     dim=1,
                 )
             )
-        recon_loss += 0 * torch.sum(hs)
+        # recon_loss += 0 * torch.sum(hs)#这一句似乎不必要
         return recon_loss
