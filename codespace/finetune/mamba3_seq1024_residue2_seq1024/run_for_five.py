@@ -1,6 +1,13 @@
 import subprocess
 
+# in kioedru:
+# nohup python /home/kioedru/code/SSGO/codespace/finetune/mamba3_seq1024_residue2_seq1024/run_for_five.py> /home/kioedru/code/SSGO/codespace/finetune/mamba3_seq1024_residue2_seq1024/finetune.log 2>&1 &
+# in Kioedru:
+# nohup python /home/Kioedru/code/SSGO/codespace/finetune/mamba3_seq1024_residue2_seq1024/run_for_five.py> /home/Kioedru/code/SSGO/codespace/finetune/mamba3_seq1024_residue2_seq1024/finetune.log 2>&1 &
+
 aspects = ["P", "F", "C"]
+# aspects = ["F", "C"]
+
 num_class = {"P": 45, "F": 38, "C": 35}
 # pretrain_updates = [2, 1, 0]
 pretrain_updates = [2]
