@@ -15,7 +15,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module_2fusion import build_predictor
+from codespace.model.predictor_module_2fusion_mamba4 import build_predictor
 import sys
 
 
@@ -391,7 +391,7 @@ def get_args():
 
 def main():
     args = get_args()
-    args.device = "cuda:0"
+    args.device = "cuda:1"
     args.input_num = 3
     # args.epochs = 100
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
@@ -421,7 +421,7 @@ def main():
     args.finetune_path = os.path.join(
         args.path,
         "finetune",
-        "2fusion_seq1024",
+        "2fusion_seq1024_mamba4",
         args.aspect,
         f"{args.seed}",
         f"{args.update_epoch}:{args.epochs}",
@@ -447,7 +447,7 @@ def main():
     # args.finetune_model = f"/home/kioedru/code/CFAGO/CFAGO_seq/result/model/finetune_model_{args.aspect}_{model_name}.pkl"
 
     args.epoch_performance_path = os.path.join(
-        args.finetune_path, f"epoch_performance_0.1drop_1e-4lr.csv"
+        args.finetune_path, f"epoch_performance.csv"
     )
 
     args.dist_url = "tcp://127.0.0.1:3723"

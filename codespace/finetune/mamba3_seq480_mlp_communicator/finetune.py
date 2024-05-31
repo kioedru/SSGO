@@ -15,7 +15,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module_2fusion import build_predictor
+from codespace.model.predictor_module_mlp_communicator import build_predictor
 import sys
 
 
@@ -106,11 +106,11 @@ def check_and_create_folder(folder_path):
         print(f"文件夹 '{folder_path}' 已存在。")
 
 
-# prott5:[num,1024]
+# esm2:[num,480]
 def get_finetune_data(usefor, aspect, organism_num):
     feature = read_feature_by_index(usefor, aspect, organism_num)
     ppi_matrix = read_ppi_by_index(usefor, aspect, organism_num)
-    seq = read_seq_embed_avgpool_prott5_1024_by_index(usefor, aspect, organism_num)
+    seq = read_seq_embed_avgpool_esm2_480_by_index(usefor, aspect, organism_num)
     labels = read_labels(usefor, aspect, organism_num)
     return feature, seq, ppi_matrix, labels
 
@@ -391,7 +391,7 @@ def get_args():
 
 def main():
     args = get_args()
-    args.device = "cuda:0"
+    args.device = "cuda:1"
     args.input_num = 3
     # args.epochs = 100
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
@@ -408,8 +408,7 @@ def main():
     # args.seed = int(
     #     1329765519
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
-    args.model_name_mamba = f"mamba3_seq1024"
-    args.model_name_transformer = f"transformer_seq1024"
+    args.model_name = f"mamba3_seq480"
 
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
     path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace"
@@ -421,25 +420,16 @@ def main():
     args.finetune_path = os.path.join(
         args.path,
         "finetune",
-        "2fusion_seq1024",
+        args.model_name + "_mlp_communicator",
         args.aspect,
         f"{args.seed}",
         f"{args.update_epoch}:{args.epochs}",
     )
     sys.path.append(
-        os.path.join(args.path, "pretrain", args.model_name_mamba)
+        os.path.join(args.path, "pretrain", args.model_name)
     )  # 加入模型文件的父目录
-    sys.path.append(
-        os.path.join(args.path, "pretrain", args.model_name_transformer)
-    )  # 加入模型文件的父目录
-    args.pretrained_model_mamba = os.path.join(
-        args.path, "pretrain", args.model_name_mamba, f"{args.model_name_mamba}.pkl"
-    )
-    args.pretrained_model_transformer = os.path.join(
-        args.path,
-        "pretrain",
-        args.model_name_transformer,
-        f"{args.model_name_transformer}.pkl",
+    args.pretrained_model = os.path.join(
+        args.path, "pretrain", args.model_name, f"{args.model_name}.pkl"
     )
     args.finetune_model_path = os.path.join(args.finetune_path, f"epoch_model")
     check_and_create_folder(args.finetune_model_path)
@@ -447,7 +437,7 @@ def main():
     # args.finetune_model = f"/home/kioedru/code/CFAGO/CFAGO_seq/result/model/finetune_model_{args.aspect}_{model_name}.pkl"
 
     args.epoch_performance_path = os.path.join(
-        args.finetune_path, f"epoch_performance_0.1drop_1e-4lr.csv"
+        args.finetune_path, f"epoch_performance.csv"
     )
 
     args.dist_url = "tcp://127.0.0.1:3723"
@@ -521,36 +511,19 @@ def main_worker(args):
     # ]
     torch.cuda.empty_cache()
 
-    # 载入预训练模型
-    finetune_pre_model_transformer = torch.load(
-        args.pretrained_model_transformer, map_location=args.device
-    )
-    # 载入预训练模型
-    finetune_pre_model_mamba = torch.load(
-        args.pretrained_model_mamba, map_location=args.device
-    )
-    # 创建微调模型
-    predictor_model = build_predictor(
-        finetune_pre_model_transformer, finetune_pre_model_mamba, args
-    )
+    # 载入微调模型
+    finetune_pre_model = torch.load(args.pretrained_model, map_location=args.device)
+    # 创建预测模型
+    predictor_model = build_predictor(finetune_pre_model, args)
 
     # if args.optim == 'AdamW':
     # 参数字典列表，存储预训练模型和fc_decoder层的参数
     predictor_model_param_dicts = [
-        # 设置预训练的transformer模型的参数学习率
+        # 预训练模型的参数使用较低的学习率1e-5（因为已经训练好了，无需大幅度调整）
         {
             "params": [
                 p
-                for n, p in predictor_model.pre_model_transformer.named_parameters()
-                if p.requires_grad
-            ],
-            "lr": 1e-5,
-        },
-        # 设置预训练的mamba模型的参数学习率
-        {
-            "params": [
-                p
-                for n, p in predictor_model.pre_model_mamba.named_parameters()
+                for n, p in predictor_model.pre_model.named_parameters()
                 if p.requires_grad
             ],
             "lr": 1e-5,
@@ -620,25 +593,17 @@ def finetune(
     print("training on", device)
     for epoch in range(num_epochs):
         if args.pretrain_update == 1:  # 不更新参数
-            for p in model.pre_model_transformer.parameters():
-                p.requires_grad = False
-            for p in model.pre_model_mamba.parameters():
+            for p in model.pre_model.parameters():
                 p.requires_grad = False
         if args.pretrain_update == 2:  # 更新后半部分参数
             if epoch >= (args.epochs / 2):
-                for p in model.pre_model_transformer.parameters():
-                    p.requires_grad = True
-                for p in model.pre_model_mamba.parameters():
+                for p in model.pre_model.parameters():
                     p.requires_grad = True
             else:
-                for p in model.pre_model_transformer.parameters():
-                    p.requires_grad = False
-                for p in model.pre_model_mamba.parameters():
+                for p in model.pre_model.parameters():
                     p.requires_grad = False
         if args.pretrain_update == 0:  # 更新全部参数
-            for p in model.pre_model_transformer.parameters():
-                p.requires_grad = True
-            for p in model.pre_model_mamba.parameters():
+            for p in model.pre_model.parameters():
                 p.requires_grad = True
         start = time.time()
         batch_count = 0
