@@ -132,6 +132,19 @@ def read_labels(usefor, aspect, organism_num):
     return encode
 
 
+# 获取数据集的labels
+def read_labels_F_nlp(usefor, aspect, organism_num):
+    encode = read_labels(usefor, aspect, organism_num)
+    encode = np.delete(encode, -8, axis=1)
+    return encode
+
+
+def read_terms_F_nlp(aspect, organism_num):
+    F_terms = read_terms("F", "9606")
+    F_terms.drop(F_terms.index[-8])
+    return F_terms
+
+
 # 获取微调数据集的残基embed
 def read_residue(usefor, aspect, model_name, organism_num):
     residue_name = f"{usefor}_residue_{aspect}.pkl"
