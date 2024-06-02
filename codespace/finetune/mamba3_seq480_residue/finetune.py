@@ -15,7 +15,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module import build_predictor
+from codespace.model.predictor_module_residue import build_predictor
 import sys
 
 
@@ -71,6 +71,7 @@ from codespace.utils.read_finetune_data import (
     read_seq_embed_avgpool_esm2_2000_by_index,
     read_seq_embed_avgpool_esm2_480_by_index,
     read_seq_embed_avgpool_prott5_1024_by_index,
+    read_residue,
 )
 
 
@@ -106,11 +107,11 @@ def check_and_create_folder(folder_path):
         print(f"文件夹 '{folder_path}' 已存在。")
 
 
-# prott5:[num,1024]
+# esm2:[num,480]
 def get_finetune_data(usefor, aspect, organism_num):
     feature = read_feature_by_index(usefor, aspect, organism_num)
     ppi_matrix = read_ppi_by_index(usefor, aspect, organism_num)
-    seq = read_seq_embed_avgpool_prott5_1024_by_index(usefor, aspect, organism_num)
+    seq = read_residue(usefor, aspect, "esm2", organism_num)
     labels = read_labels(usefor, aspect, organism_num)
     return feature, seq, ppi_matrix, labels
 
@@ -136,7 +137,7 @@ def get_dataset(aspect, organism_num):
     combine_ppi_matrix = torch.from_numpy(combine_ppi_matrix).float()
     combine_labels = torch.from_numpy(combine_labels).float()
     test_feature = torch.from_numpy(test_feature).float()
-    test_seq = torch.from_numpy(test_seq).float()
+    # test_seq = torch.from_numpy(test_seq).float()
     test_ppi_matrix = torch.from_numpy(test_ppi_matrix).float()
     test_labels = torch.from_numpy(test_labels).float()
 
@@ -391,7 +392,7 @@ def get_args():
 
 def main():
     args = get_args()
-    args.device = "cuda:0"
+    args.device = "cuda:1"
     args.input_num = 3
     # args.epochs = 100
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
@@ -408,7 +409,7 @@ def main():
     # args.seed = int(
     #     1329765519
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
-    args.model_name = f"transformer_seq1024"
+    args.model_name = f"mamba3_seq480_residue"
 
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
     path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace"

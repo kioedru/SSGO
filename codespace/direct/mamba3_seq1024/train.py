@@ -15,7 +15,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module import build_predictor
+from model import build_our_model
 import sys
 
 
@@ -391,9 +391,9 @@ def get_args():
 
 def main():
     args = get_args()
-    args.device = "cuda:0"
+    args.device = "cuda:1"
     args.input_num = 3
-    # args.epochs = 100
+    # args.epochs = 500
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
     if args.pretrain_update == 0:
         args.update_epoch = args.epochs
@@ -408,7 +408,7 @@ def main():
     # args.seed = int(
     #     1329765519
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
-    args.model_name = f"transformer_seq1024"
+    args.model_name = f"mamba3_seq1024"
 
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
     path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace"
@@ -419,18 +419,13 @@ def main():
 
     args.finetune_path = os.path.join(
         args.path,
-        "finetune",
+        "direct",
         args.model_name,
         args.aspect,
         f"{args.seed}",
         f"{args.update_epoch}:{args.epochs}",
     )
-    sys.path.append(
-        os.path.join(args.path, "pretrain", args.model_name)
-    )  # 加入模型文件的父目录
-    args.pretrained_model = os.path.join(
-        args.path, "pretrain", args.model_name, f"{args.model_name}.pkl"
-    )
+
     args.finetune_model_path = os.path.join(args.finetune_path, f"epoch_model")
     check_and_create_folder(args.finetune_model_path)
 
@@ -511,31 +506,16 @@ def main_worker(args):
     # ]
     torch.cuda.empty_cache()
 
-    # 载入微调模型
-    finetune_pre_model = torch.load(args.pretrained_model, map_location=args.device)
     # 创建预测模型
-    predictor_model = build_predictor(finetune_pre_model, args)
+    our_model = build_our_model(args)
 
     # if args.optim == 'AdamW':
     # 参数字典列表，存储预训练模型和fc_decoder层的参数
+    for p in our_model.parameters():
+        p.requires_grad = True
     predictor_model_param_dicts = [
-        # 预训练模型的参数使用较低的学习率1e-5（因为已经训练好了，无需大幅度调整）
-        {
-            "params": [
-                p
-                for n, p in predictor_model.pre_model.named_parameters()
-                if p.requires_grad
-            ],
-            "lr": 1e-5,
-        },
         # fc_decoder层的参数使用默认学习率
-        {
-            "params": [
-                p
-                for n, p in predictor_model.fc_decoder.named_parameters()
-                if p.requires_grad
-            ]
-        },
+        {"params": [p for n, p in our_model.named_parameters() if p.requires_grad]},
     ]
 
     # 优化器，使用AdamW算法
@@ -547,7 +527,7 @@ def main_worker(args):
         weight_decay=0,
     )
     # 学习率调度器 指定优化器，step_size=50，默认gamma=0.1，每隔step_size个周期就将每个参数组的学习率*gamma
-    steplr = lr_scheduler.StepLR(predictor_model_optimizer, 50)
+    steplr = lr_scheduler.StepLR(predictor_model_optimizer, 500)
     patience = 10
     changed_lr = False
 
@@ -556,7 +536,7 @@ def main_worker(args):
         args,
         train_loader,
         test_loader,
-        predictor_model,
+        our_model,
         loss,
         predictor_model_optimizer,
         steplr,
@@ -564,14 +544,9 @@ def main_worker(args):
         args.device,
     )
 
-    # 导入已微调好的模型
-    # predictor_model = pd.read_pickle(
-    #     "/home/Kioedru/code/CFAGO_seq/result/model/finetune_model_{args.aspect}.pkl"
-    # ).to(args.device)
-
     # 保存微调模型
     torch.save(
-        predictor_model.state_dict(),
+        our_model.state_dict(),
         os.path.join(args.finetune_path, f"final_model.pkl"),
     )
 
@@ -592,19 +567,6 @@ def finetune(
     net.train()
     print("training on", device)
     for epoch in range(num_epochs):
-        if args.pretrain_update == 1:  # 不更新参数
-            for p in model.pre_model.parameters():
-                p.requires_grad = False
-        if args.pretrain_update == 2:  # 更新后半部分参数
-            if epoch >= (args.epochs / 2):
-                for p in model.pre_model.parameters():
-                    p.requires_grad = True
-            else:
-                for p in model.pre_model.parameters():
-                    p.requires_grad = False
-        if args.pretrain_update == 0:  # 更新全部参数
-            for p in model.pre_model.parameters():
-                p.requires_grad = True
         start = time.time()
         batch_count = 0
         train_l_sum = 0.0
@@ -615,8 +577,8 @@ def finetune(
             protein_data[2] = protein_data[2].to(device)
             label = label.to(device)
 
-            rec, output = net(protein_data)
-            l = loss(output, label, rec)
+            output = net(protein_data)
+            l = loss(output, label)
             optimizer.zero_grad()
             l.backward()
             train_l_sum += l.cpu().item()
@@ -634,7 +596,7 @@ def finetune(
                 perf,
                 loss=train_l_sum / batch_count,
                 time=time.time() - start,
-                lr=optimizer.param_groups[1]["lr"],
+                lr=optimizer.param_groups[0]["lr"],
             )
         # 保存每轮的model参数字典
         # torch.save(
@@ -660,7 +622,7 @@ def evaluate(test_loader, predictor_model, device):
         label = label.to(device)
 
         # compute output
-        rec, output = predictor_model(proteins)
+        output = predictor_model(proteins)
         output_sm = torch.nn.functional.sigmoid(output)
 
         # collect output and label for metric calculation

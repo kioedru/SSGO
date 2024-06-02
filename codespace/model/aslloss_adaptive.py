@@ -86,7 +86,7 @@ class AsymmetricLossOptimized(nn.Module):
             self.asymmetric_w
         ) = self.loss = None
 
-    def forward(self, rec, x, y):
+    def forward(self, x, y, rec=None):
         """ "
         Parameters
         ----------
@@ -138,8 +138,9 @@ class AsymmetricLossOptimized(nn.Module):
         _loss = -self.loss.sum() / x.size(0)
         _loss = _loss / y.size(1)
 
-        _loss += 0 * torch.sum(rec[0])
-        _loss += 0 * torch.sum(rec[1])
+        if rec != None:
+            _loss += 0 * torch.sum(rec[0])
+            _loss += 0 * torch.sum(rec[1])
         return _loss
 
 

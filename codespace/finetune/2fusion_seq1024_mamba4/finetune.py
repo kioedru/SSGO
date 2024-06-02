@@ -651,7 +651,7 @@ def finetune(
             label = label.to(device)
 
             rec, output = net(protein_data)
-            l = loss(rec, output, label)
+            l = loss(output, label, rec)
             optimizer.zero_grad()
             l.backward()
             train_l_sum += l.cpu().item()
