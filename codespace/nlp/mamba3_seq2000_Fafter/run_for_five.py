@@ -15,7 +15,7 @@ for epoch in epochs:
                     f"finetune for {aspect} in epochs={epoch} seed={seed} pretrain_update={pretrain_update}"
                 )
 
-                command = f"nohup python /home/Kioedru/code/SSGO/codespace/nlp/transformer_seq2000_Fafter/finetune.py --pretrain-update {pretrain_update} --epochs {epoch} --seed {seed}  --aspect {aspect} --num_class {num_class[aspect]} &"
+                command = f"nohup python /home/Kioedru/code/SSGO/codespace/nlp/mamba3_seq2000_Fafter/finetune.py --pretrain-update {pretrain_update} --epochs {epoch} --seed {seed}  --aspect {aspect} --num_class {num_class[aspect]} &"
                 process = subprocess.Popen(
                     command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 )
