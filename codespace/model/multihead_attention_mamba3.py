@@ -117,7 +117,7 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.last_encoder = last_encoder
         # 所有头共需要的输入维度512，8头
-        self.self_attn = Mamba(d_model=512, d_state=16, d_conv=4, expand=2)
+        self.self_attn = Mamba(d_model=dim_feedforward, d_state=16, d_conv=4, expand=2)
         # self.self_attn = MultiheadAttention(dim_feedforward, nhead, dropout=dropout)
         self.linear1 = nn.Linear(dim_feedforward, 2048)
         self.linear2 = nn.Linear(2048, dim_feedforward)
@@ -205,7 +205,7 @@ def build_transformerEncoder(args):
         dim_feedforward=args.dim_feedforward,  # 512
         activation=args.activation,  # gelu
         dropout=args.dropout,  # 0.1
-        nhead=args.nheads,  # 8
+        # nhead=args.nheads,  # 8
         num_encoder_layers=args.attention_layers,  # 6
         normalize_before=args.pre_norm,
     )

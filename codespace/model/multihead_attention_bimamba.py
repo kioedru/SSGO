@@ -117,7 +117,9 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.last_encoder = last_encoder
         # 所有头共需要的输入维度512，8头
-        self.self_attn = BiMamba(d_model=512, d_state=16, d_conv=4, expand=2)
+        self.self_attn = BiMamba(
+            d_model=dim_feedforward, d_state=16, d_conv=4, expand=2
+        )
         # self.self_attn = MultiheadAttention(dim_feedforward, nhead, dropout=dropout)
         self.linear1 = nn.Linear(dim_feedforward, 2048)
         self.linear2 = nn.Linear(2048, dim_feedforward)
