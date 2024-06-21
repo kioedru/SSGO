@@ -326,13 +326,16 @@ def get_args():
     return args
 
 
+org2num = {"human": "9606", "mouse": "10090"}
+
+
 # in kioedru:
 # nohup python /home/kioedru/code/SSGO/codespace/pretrain/bimamba_concat/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/bimamba_concat/pretrain.log 2>&1 &
 # in Kioedru:
 # nohup python /home/Kioedru/code/SSGO/codespace/pretrain/bimamba_concat/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/bimamba_concat/pretrain.log 2>&1 &
 def main():
     args = get_args()
-
+    args.org = "human"
     args.model_name = f"bimamba_concat"
     pretrain_path_in_kioedru = f"/home/kioedru/code/SSGO/codespace/pretrain"
     pretrain_path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace/pretrain"
@@ -342,12 +345,11 @@ def main():
         args.pretrain_path = pretrain_path_in_Kioedru
 
     args.pretrain_model = os.path.join(
-        args.pretrain_path, args.model_name, f"{args.model_name}.pkl"
+        args.pretrain_path, args.model_name, org2num[args.org], f"{args.model_name}.pkl"
     )
     args.performance_path = os.path.join(
-        args.pretrain_path, args.model_name, f"pretrain_loss.csv"
+        args.pretrain_path, args.model_name, org2num[args.org], f"pretrain_loss.csv"
     )
-    args.org = "human"
     args.seed = int(1329765522)
     args.dim_feedforward = int(512)
     args.nheads = int(8)
@@ -374,7 +376,7 @@ def main():
 
 def main_worker(args):
 
-    full_dataset, args.modesfeature_len = get_ssl_datasets("9606")
+    full_dataset, args.modesfeature_len = get_ssl_datasets(org2num[args.org])
 
     args.encode_structure = [1024]
     # build model

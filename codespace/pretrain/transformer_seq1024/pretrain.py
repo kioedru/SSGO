@@ -326,12 +326,16 @@ def get_args():
     return args
 
 
+org2num = {"human": "9606", "mouse": "10090"}
+
+
 # in kioedru:
 # nohup python /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.log 2>&1 &
 # in Kioedru:
-# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.log 2>&1 &
+# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/10090/pretrain.log 2>&1 &
 def main():
     args = get_args()
+    args.org = "mouse"
 
     args.model_name = f"transformer_seq1024"
     pretrain_path_in_kioedru = f"/home/kioedru/code/SSGO/codespace/pretrain"
@@ -342,12 +346,11 @@ def main():
         args.pretrain_path = pretrain_path_in_Kioedru
 
     args.pretrain_model = os.path.join(
-        args.pretrain_path, args.model_name, f"{args.model_name}.pkl"
+        args.pretrain_path, args.model_name, org2num[args.org], f"{args.model_name}.pkl"
     )
     args.performance_path = os.path.join(
-        args.pretrain_path, args.model_name, f"pretrain_loss.csv"
+        args.pretrain_path, args.model_name, org2num[args.org], f"pretrain_loss.csv"
     )
-    args.org = "human"
     args.seed = int(1329765522)
     args.dim_feedforward = int(512)
     args.nheads = int(8)
@@ -357,7 +360,7 @@ def main():
     args.activation = "gelu"
     args.epochs = int(5000)
     args.lr = float(1e-5)
-    args.device = "cuda:0"
+    args.device = "cuda:1"
 
     # # 指定随机种子初始化随机数生成器（保证实验的可复现性）
     if args.seed is not None:
@@ -374,7 +377,7 @@ def main():
 
 def main_worker(args):
 
-    full_dataset, args.modesfeature_len = get_ssl_datasets("9606")
+    full_dataset, args.modesfeature_len = get_ssl_datasets(org2num[args.org])
 
     args.encode_structure = [1024]
     # build model
