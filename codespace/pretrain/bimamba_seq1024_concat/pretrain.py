@@ -331,11 +331,11 @@ org2num = {"human": "9606", "mouse": "10090"}
 # in kioedru:
 # nohup python /home/kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_concat/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_concat/pretrain.log 2>&1 &
 # in Kioedru:
-# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_concat/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_concat/pretrain.log 2>&1 &
+# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_concat/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_concat/10090/pretrain.log 2>&1 &
 def main():
     args = get_args()
 
-    args.org = "human"
+    args.org = "mouse"
     args.model_name = f"bimamba_seq1024_concat"
     pretrain_path_in_kioedru = f"/home/kioedru/code/SSGO/codespace/pretrain"
     pretrain_path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace/pretrain"
