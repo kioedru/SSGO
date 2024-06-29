@@ -15,12 +15,15 @@ import copy
 import csv
 from sklearn.preprocessing import minmax_scale
 
-from pretrain_model_mamba3 import build_Pre_Train_Model
+from codespace.pretrain.bimamba_seq1024_concat.pretrain_model_bimamba import (
+    build_Pre_Train_Model,
+)
 from codespace.model import aslloss_adaptive
 from codespace.utils.read_pretrain_data import (
     read_ppi,
     read_feature,
-    read_seq_embed_avgpool_esm2_2000,
+    read_seq_embed_avgpool_prott5_1024,
+    read_seq_embed_avgpool_prott5_1024_new,
 )
 
 
@@ -71,7 +74,7 @@ class multimodesFullDataset(torch.utils.data.Dataset):
 def get_ssl_datasets(organism_num):
     ppi_matrix, ppi_id = read_ppi(organism_num)
     feature = read_feature(organism_num)
-    seq = read_seq_embed_avgpool_esm2_2000(organism_num)
+    seq = read_seq_embed_avgpool_prott5_1024_new(organism_num)
 
     # 归一化
     ppi_matrix = minmax_scale(ppi_matrix)
@@ -323,14 +326,18 @@ def get_args():
     return args
 
 
+org2num = {"human": "9606", "mouse": "10090"}
+
+
 # in kioedru:
-# nohup python /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.log 2>&1 &
+# nohup python /home/kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_new_concat/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_new_concat/pretrain.log 2>&1 &
 # in Kioedru:
-# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/mamba3_seq2000/pretrain.log 2>&1 &
+# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_new_concat/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/bimamba_seq1024_new_concat/9606/pretrain.log 2>&1 &
 def main():
     args = get_args()
 
-    args.model_name = f"mamba3_seq2000"
+    args.org = "human"
+    args.model_name = f"bimamba_seq1024_new_concat"
     pretrain_path_in_kioedru = f"/home/kioedru/code/SSGO/codespace/pretrain"
     pretrain_path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace/pretrain"
     if os.path.exists(pretrain_path_in_kioedru):
@@ -339,12 +346,11 @@ def main():
         args.pretrain_path = pretrain_path_in_Kioedru
 
     args.pretrain_model = os.path.join(
-        args.pretrain_path, args.model_name, f"{args.model_name}.pkl"
+        args.pretrain_path, args.model_name, org2num[args.org], f"{args.model_name}.pkl"
     )
     args.performance_path = os.path.join(
-        args.pretrain_path, args.model_name, f"pretrain_loss.csv"
+        args.pretrain_path, args.model_name, org2num[args.org], f"pretrain_loss.csv"
     )
-    args.org = "human"
     args.seed = int(1329765522)
     args.dim_feedforward = int(512)
     args.nheads = int(8)
@@ -354,7 +360,7 @@ def main():
     args.activation = "gelu"
     args.epochs = int(5000)
     args.lr = float(1e-5)
-    args.device = "cuda:0"
+    args.device = "cuda:1"
 
     # # 指定随机种子初始化随机数生成器（保证实验的可复现性）
     if args.seed is not None:
@@ -371,7 +377,7 @@ def main():
 
 def main_worker(args):
 
-    full_dataset, args.modesfeature_len = get_ssl_datasets("9606")
+    full_dataset, args.modesfeature_len = get_ssl_datasets(org2num[args.org])
 
     args.encode_structure = [1024]
     # build model

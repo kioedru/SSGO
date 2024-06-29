@@ -160,3 +160,19 @@ def read_residue(usefor, aspect, model_name, organism_num):
     # 进行归一化
     normalized_tensor = (residue - min_val) / (max_val - min_val)
     return normalized_tensor.detach()
+
+
+def torch_min_max(x):
+    min_val = torch.min(x)
+    max_val = torch.max(x)
+    # 进行归一化
+    normalized_tensor = (x - min_val) / (max_val - min_val)
+    return normalized_tensor.detach()
+
+
+def np_min_max(x):
+    min_val = np.min(x)
+    max_val = np.max(x)
+    # 进行归一化
+    normalized_array = (x - min_val) / (max_val - min_val)
+    return normalized_array

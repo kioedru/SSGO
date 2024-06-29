@@ -14,12 +14,12 @@ import torch.distributed as dist
 import numpy as np
 import copy
 
-from codespace.model.multihead_attention_mamba3 import (
+from codespace.model.multihead_attention_mamba_concat import (
     build_transformerEncoder,
     _get_activation_fn,
 )
 
-from mamba_ssm import Mamba
+# from mamba_ssm import Mamba
 
 
 class Pre_Train_Model(nn.Module):
@@ -138,10 +138,7 @@ class Pre_Train_Model(nn.Module):
         in_x = in_x.unsqueeze(0)  # 1,32,512
         in_z = in_z.unsqueeze(0)  # 1,32,512
 
-        # 按第0维拼接
-        # in_put = torch.cat([in_x, in_z], 0)  # 2,32,512
-
-        in_put = torch.cat([in_x, in_z, in_s], 0)  # 2,32,512
+        in_put = torch.cat([in_x, in_z, in_s], 0)  # 3,32,512
 
         # 编码器解码器
         hs = self.transformerEncoder(in_put)  # B,K,d
