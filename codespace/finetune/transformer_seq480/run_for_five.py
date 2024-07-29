@@ -1,6 +1,7 @@
 import subprocess
 
-aspects = ["P", "F", "C"]
+aspects = ["F", "C"]
+# aspects = ["P", "F", "C"]
 num_class = {"P": 45, "F": 38, "C": 35}
 # pretrain_updates = [2, 1, 0]
 pretrain_updates = [2]

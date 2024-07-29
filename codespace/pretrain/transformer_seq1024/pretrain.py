@@ -332,10 +332,10 @@ org2num = {"human": "9606", "mouse": "10090"}
 # in kioedru:
 # nohup python /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.log 2>&1 &
 # in Kioedru:
-# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/10090/pretrain.log 2>&1 &
+# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq1024/9606/pretrain.log 2>&1 &
 def main():
     args = get_args()
-    args.org = "mouse"
+    args.org = "human"
 
     args.model_name = f"transformer_seq1024"
     pretrain_path_in_kioedru = f"/home/kioedru/code/SSGO/codespace/pretrain"

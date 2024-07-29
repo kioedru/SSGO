@@ -5,7 +5,7 @@ from codespace.utils.read_pretrain_data import (
     read_seq_embed_avgpool_esm2_480,
     read_seq_embed_avgpool_prott5_1024,
     read_seq_embed_avgpool_prott5_1024_new,
-    read_seq_one_hot_sum,
+    read_seq_embed_onehot,
 )
 import pandas as pd
 import os
@@ -74,9 +74,24 @@ def read_seq_embed_avgpool_esm2_480_by_index(usefor, aspect, organism_num):
     df = read_df(usefor, aspect, organism_num)
     index = get_ppi_index(df, organism_num)
     seq_esm2_emb = read_seq_embed_avgpool_esm2_480(organism_num)
+    seq_esm2_emb = minmax_scale(seq_esm2_emb)
     selected_rows_esm2 = seq_esm2_emb[index]
-    selected_rows = minmax_scale(selected_rows_esm2)
-    return selected_rows
+    # selected_rows = minmax_scale(selected_rows_esm2)
+    # return selected_rows
+    return selected_rows_esm2
+
+
+def read_seq_embed_avgpool_esm2_480_by_index_without_normalize(
+    usefor, aspect, organism_num
+):
+    df = read_df(usefor, aspect, organism_num)
+    index = get_ppi_index(df, organism_num)
+    seq_esm2_emb = read_seq_embed_avgpool_esm2_480(organism_num)
+    # seq_esm2_emb = minmax_scale(seq_esm2_emb)
+    selected_rows_esm2 = seq_esm2_emb[index]
+    # selected_rows = minmax_scale(selected_rows_esm2)
+    # return selected_rows
+    return selected_rows_esm2
 
 
 # prott5:[num,1024]
@@ -84,9 +99,20 @@ def read_seq_embed_avgpool_prott5_1024_by_index(usefor, aspect, organism_num):
     df = read_df(usefor, aspect, organism_num)
     index = get_ppi_index(df, organism_num)
     seq_prott5_emb = read_seq_embed_avgpool_prott5_1024(organism_num)
+    seq_prott5_emb = minmax_scale(seq_prott5_emb)
     selected_rows_prott5 = seq_prott5_emb[index]
-    selected_rows = minmax_scale(selected_rows_prott5)
-    return selected_rows
+    return selected_rows_prott5
+
+
+def read_seq_embed_avgpool_prott5_1024_by_index_without_normalize(
+    usefor, aspect, organism_num
+):
+    df = read_df(usefor, aspect, organism_num)
+    index = get_ppi_index(df, organism_num)
+    seq_prott5_emb = read_seq_embed_avgpool_prott5_1024(organism_num)
+    # seq_prott5_emb = minmax_scale(seq_prott5_emb)
+    selected_rows_prott5 = seq_prott5_emb[index]
+    return selected_rows_prott5
 
 
 # prott5:[num,1024]
@@ -97,6 +123,45 @@ def read_seq_embed_avgpool_prott5_1024_new_by_index(usefor, aspect, organism_num
     selected_rows_prott5 = seq_prott5_emb[index]
     selected_rows = minmax_scale(selected_rows_prott5)
     return selected_rows
+
+
+# onehot:[num,26]
+def read_seq_embed_onehot_by_index(usefor, aspect, organism_num):
+    df = read_df(usefor, aspect, organism_num)
+    index = get_ppi_index(df, organism_num)
+    seq_emb = read_seq_embed_onehot(organism_num)
+    selected_rows = seq_emb[index]
+    selected_rows = minmax_scale(selected_rows)
+    return selected_rows
+
+
+def read_gan_seq_embed_and_labels(aspect, organism_num, model_name="esm-480"):
+    label_dim = {"P": 45, "F": 38, "C": 35}
+    terms = read_terms(aspect, organism_num)
+    mlb = MultiLabelBinarizer(classes=terms["terms"].tolist())
+
+    best_epoch = pd.read_pickle(
+        f"/home/Kioedru/code/SSGO/data/synthetic/{model_name}/{organism_num}/{aspect}_best_epoch.pkl"
+    )
+    labels = []
+    seq_emb = []
+    for index, row in best_epoch.iterrows():
+        term = row["term"]
+        best_epoch = row["best_epoch"]
+        # /home/Kioedru/code/SSGO/data/synthetic/esm2-480/9606/P/GO:0000122/GO:0000122_Iteration_400_Synthetic_Training_Positive.pkl
+        emb = pd.read_pickle(
+            f"/home/Kioedru/code/SSGO/data/synthetic/{model_name}/{organism_num}/{aspect}/{term}/{term}_Iteration_{best_epoch}_Synthetic_Training_Positive.pkl"
+        )
+        seq_emb.append(emb)
+
+        sample_num = emb.shape[0]
+        encode = mlb.fit_transform([[term]])
+        encode = np.array(encode)
+        for i in range(sample_num):
+            labels.append(encode)
+    seq_emb = np.vstack(seq_emb)
+    labels = np.vstack(labels)
+    return seq_emb, labels
 
 
 # # 未实现：获取数据集的onehot特征

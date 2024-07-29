@@ -391,7 +391,7 @@ def get_args():
 
 def main():
     args = get_args()
-    args.device = "cuda:0"
+    args.device = "cuda:1"
     args.input_num = 3
     # args.epochs = 100
     # args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
@@ -406,7 +406,7 @@ def main():
     # args.aspect = "P"
     # args.num_class = int(45)
     # args.seed = int(
-    #     1329765519
+    #     132976111
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
     args.model_name = f"transformer_seq480"
 
@@ -421,6 +421,7 @@ def main():
         args.path,
         "finetune",
         args.model_name,
+        args.org,
         args.aspect,
         f"{args.seed}",
         f"{args.update_epoch}:{args.epochs}",
@@ -429,7 +430,7 @@ def main():
         os.path.join(args.path, "pretrain", args.model_name)
     )  # 加入模型文件的父目录
     args.pretrained_model = os.path.join(
-        args.path, "pretrain", args.model_name, f"{args.model_name}.pkl"
+        args.path, "pretrain", args.model_name, args.org, f"{args.model_name}.pkl"
     )
     args.finetune_model_path = os.path.join(args.finetune_path, f"epoch_model")
     check_and_create_folder(args.finetune_model_path)
@@ -440,7 +441,6 @@ def main():
         args.finetune_path, f"epoch_performance.csv"
     )
 
-    args.dist_url = "tcp://127.0.0.1:3723"
     args.dim_feedforward = int(512)
     args.nheads = int(8)
     args.dropout = float(0.3)
@@ -467,7 +467,7 @@ def main_worker(args):
 
     # 准备数据集,esm2+prott5时 seq_2=True
     train_dataset, test_dataset, args.modesfeature_len = get_dataset(
-        args.aspect, "9606"
+        args.aspect, args.org
     )
     args.encode_structure = [1024]
 

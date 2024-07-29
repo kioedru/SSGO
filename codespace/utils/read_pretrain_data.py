@@ -75,9 +75,9 @@ def read_seq(organism_num):
     return seq
 
 
-# 该文件目前未实现：one_hot_sum (19385,26)
-def read_seq_one_hot_sum(organism_num):
-    file_name = f"{organism_num}_seq_one_hot_sum.pkl"
+# one_hot (19385,26)
+def read_seq_embed_onehot(organism_num):
+    file_name = f"{organism_num}_seq_embed_onehot.pkl"
     file_path = os.path.join(pretrain_data_path, file_name)
     seq = pd.read_pickle(file_path)
     return seq

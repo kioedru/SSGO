@@ -332,11 +332,11 @@ org2num = {"human": "9606", "mouse": "10090"}
 # in kioedru:
 # nohup python /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq480/pretrain.py> /home/kioedru/code/SSGO/codespace/pretrain/transformer_seq480/pretrain.log 2>&1 &
 # in Kioedru:
-# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq480/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq480/10090/pretrain.log 2>&1 &
+# nohup python /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq480/pretrain.py> /home/Kioedru/code/SSGO/codespace/pretrain/transformer_seq480/9606/pretrain.log 2>&1 &
 def main():
     args = get_args()
-    args.device = "cuda:0"
-    args.org = "mouse"
+    args.device = "cuda:1"
+    args.org = "human"
     args.model_name = f"transformer_seq480"
     pretrain_path_in_kioedru = f"/home/kioedru/code/SSGO/codespace/pretrain"
     pretrain_path_in_Kioedru = f"/home/Kioedru/code/SSGO/codespace/pretrain"

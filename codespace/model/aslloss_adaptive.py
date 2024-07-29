@@ -138,9 +138,6 @@ class AsymmetricLossOptimized(nn.Module):
         _loss = -self.loss.sum() / x.size(0)
         _loss = _loss / y.size(1)
 
-        if rec != None:
-            _loss += 0 * torch.sum(rec[0])
-            _loss += 0 * torch.sum(rec[1])
         return _loss
 
 
@@ -158,7 +155,7 @@ class pretrainLossOptimized(nn.Module):
         ) = self.loss = None
         self.LARGE_NUM = 1e9
 
-    def forward(self, ori, rec, hs):
+    def forward(self, ori, rec, hs=None):
         """ "
         Parameters
         ----------
