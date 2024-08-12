@@ -461,7 +461,7 @@ def main():
     # args.aspect = "P"
     # args.num_class = int(45)
     # args.seed = int(
-    #     1329765519
+    #     1329765522
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
     args.input_num = 3
     args.epochs = 100
