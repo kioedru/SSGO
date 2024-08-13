@@ -463,6 +463,7 @@ def main():
     # args.seed = int(
     #     1329765522
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
+
     args.input_num = 3
     args.epochs = 100
     args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
