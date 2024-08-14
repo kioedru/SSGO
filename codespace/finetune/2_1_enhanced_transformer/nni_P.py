@@ -22,7 +22,7 @@ experiment.config.tuner.class_args["seed"] = 100
 
 # 共尝试10组超参，并且每次并行地评估2组超参。
 experiment.config.max_trial_number = 100
-experiment.config.trial_concurrency = 2
+experiment.config.trial_concurrency = 3
 
 experiment.run(8093)
 

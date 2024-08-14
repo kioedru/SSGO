@@ -18,7 +18,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module_2_1_enhanced_tranformer import build_predictor
+from codespace.model.predictor_module_2_1_enhanced_tranformer3 import build_predictor
 
 
 class AverageMeter(object):
@@ -427,6 +427,8 @@ def get_args():
 import nni
 
 
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced_transformer/finetune.py --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced_transformer/finetune.py --seq_feature seq1024 --aspect F --num_class 38 --seed 1329765522 --device cuda:0 &
 # nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced_transformer/finetune.py --seq_feature seq1024 --aspect C --num_class 35 --seed 1329765522 --device cuda:0 &
 def main():
     args = get_args()
@@ -471,7 +473,7 @@ def main():
 
     args.org = "9606"
 
-    args.model_name = f"2_1_enhanced_transformer_{args.seq_feature}"
+    args.model_name = f"2_1_enhanced_transformer3_{args.seq_feature}"
     # /home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq480_only.pkl
     args.seq_model_name = f"transformer_{args.seq_feature}_only"
     # /home/Kioedru/code/SSGO/codespace/pretrain/bimamba/9606/bimamba.pkl
