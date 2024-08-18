@@ -18,7 +18,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module_2_1_enhanced_tranformer3 import build_predictor
+from codespace.model.predictor_module_2_1_enhanced_tranformer4 import build_predictor
 
 
 class AverageMeter(object):
@@ -454,12 +454,12 @@ def main():
     print(params)
 
     # 需注释的参数
-    # args.seq_feature = "seq1024"
-    # args.aspect = "P"
-    # args.num_class = int(45)
-    # args.seed = int(
-    #     1329765522
-    # )  #  1329765522  132976111  1329765525    1329765529  1329765519
+    args.seq_feature = "seq1024"
+    args.aspect = "P"
+    args.num_class = int(45)
+    args.seed = int(
+        1329765522
+    )  #  1329765522  132976111  1329765525    1329765529  1329765519
 
     args.input_num = 3
     args.epochs = 100
