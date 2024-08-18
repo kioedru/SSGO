@@ -157,7 +157,9 @@ class Predictor(nn.Module):
 
         fusion_ppi_feature = self.ppi_feature_fison(
             hs_ppi_feature, ppi_feature_src, ppi_feature_src
-        )  # 交叉注意力，encoder特征/原始/原始
+        )[
+            0
+        ]  # 交叉注意力，encoder特征/原始/原始
 
         # global_seq = torch.einsum("LBD->BLD", hs_seq)  # 32,1,512
         # local_seq = torch.einsum("LBD->BLD", seq_src)  # 32,1,512
@@ -167,7 +169,7 @@ class Predictor(nn.Module):
         # fusion_seq = self.fc_seq(fusion_seq)  # 1,32,512
         # fusion_seq = self.act_seq(fusion_seq)  # 1,32,512
         # fusion_seq = self.drop_seq(fusion_seq)  # 1,32,512
-        fusion_seq = self.seq_fison(hs_seq, seq_src, seq_src)
+        fusion_seq = self.seq_fison(hs_seq, seq_src, seq_src)[0]
 
         before_fusion_hs = torch.cat(
             [fusion_ppi_feature, fusion_seq], dim=0
