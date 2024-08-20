@@ -80,8 +80,8 @@ class Predictor(nn.Module):
         )
 
     def forward(self, src):
-        ppi_feature_src = src  # 2，32，512
-        seq_src = src[2].unsqueeze(0)  # 1，32，512
+        ppi_feature_src = src  # 3,32,19385/1389/1024
+        seq_src = src[2].unsqueeze(0)  # 1,32,1024
         _, hs_ppi_feature = self.ppi_feature_pre_model(ppi_feature_src)
         _, hs_seq = self.seq_pre_model(seq_src)
         hs = torch.cat([hs_ppi_feature, hs_seq], dim=0)  # 4,32,512

@@ -18,7 +18,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module_2_1_enhanced_tranformer5 import build_predictor
+from codespace.model.predictor_module_2_1_enhanced_tranformer7 import build_predictor
 
 
 class AverageMeter(object):
@@ -415,6 +415,11 @@ def parser_args():
         default="seq480",  # seq1024
         type=str,
     )
+    parser.add_argument(
+        "--fusion",
+        default="transformer",
+        type=str,
+    )
     args = parser.parse_args()
     return args
 
@@ -473,7 +478,7 @@ def main():
 
     args.org = "9606"
 
-    args.model_name = f"2_1_enhanced_transformer5_{args.seq_feature}"
+    args.model_name = f"2_1_enhanced_transformer7_{args.seq_feature}"
     # /home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq480_only.pkl
     args.seq_model_name = f"transformer_{args.seq_feature}_only"
     # /home/Kioedru/code/SSGO/codespace/pretrain/bimamba/9606/bimamba.pkl
