@@ -24,6 +24,6 @@ experiment.config.tuner.class_args["seed"] = 100
 experiment.config.max_trial_number = 100
 experiment.config.trial_concurrency = 3
 
-experiment.run(8093)
+experiment.run(8083)
 
 # nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced_transformer/nni_P.py &
