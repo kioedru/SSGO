@@ -22,7 +22,7 @@ experiment.config.tuner.class_args["seed"] = 100
 
 # 共尝试10组超参，并且每次并行地评估2组超参。
 experiment.config.max_trial_number = 100
-experiment.config.trial_concurrency = 3
+experiment.config.trial_concurrency = 2
 
 experiment.run(8094)
 # nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced2_transformer/nni_F.py &

@@ -18,7 +18,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module_2_1_enhanced_tranformer9 import build_predictor
+from codespace.model.predictor_module_2_1_enhanced_tranformer12 import build_predictor
 
 
 class AverageMeter(object):
@@ -478,7 +478,7 @@ def main():
 
     args.org = "9606"
 
-    args.model_name = f"2_1_enhanced_transformer9_{args.seq_feature}"
+    args.model_name = f"2_1_enhanced_transformer12_{args.seq_feature}"
     # /home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq480_only.pkl
     args.seq_model_name = f"transformer_{args.seq_feature}_only"
     # /home/Kioedru/code/SSGO/codespace/pretrain/bimamba/9606/bimamba.pkl
@@ -734,7 +734,7 @@ def finetune(
         # 每轮都测试
         with torch.no_grad():
             perf = evaluate(test_loader, net, args.device)
-            perf["default"] = perf["m-aupr"]
+            perf["default"] = perf["Fmax"]
             if not args.nni:
                 perf_write_to_csv(
                     args,
