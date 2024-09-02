@@ -633,6 +633,13 @@ def main_worker(args):
                 if p.requires_grad
             ]
         },
+        {
+            "params": [
+                p
+                for n, p in predictor_model.fusion.named_parameters()
+                if p.requires_grad
+            ]
+        },
     ]
 
     # 优化器，使用AdamW算法

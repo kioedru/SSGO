@@ -18,7 +18,6 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.model.predictor_module_2_1_enhanced_tranformer13 import build_predictor
 
 
 class AverageMeter(object):
@@ -420,6 +419,11 @@ def parser_args():
         default="transformer",
         type=str,
     )
+    parser.add_argument(
+        "--model_num",
+        default="21",
+        type=str,
+    )
     args = parser.parse_args()
     return args
 
@@ -432,9 +436,9 @@ def get_args():
 import nni
 
 
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced_transformer/finetune.py --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:0 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced_transformer/finetune.py --seq_feature seq1024 --aspect F --num_class 38 --seed 1329765522 --device cuda:0 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced_transformer/finetune.py --seq_feature seq1024 --aspect C --num_class 35 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 23 --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 23 --seq_feature seq1024 --aspect F --num_class 38 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 23 --seq_feature seq1024 --aspect C --num_class 35 --seed 1329765522 --device cuda:0 &
 def main():
     args = get_args()
 
@@ -445,6 +449,7 @@ def main():
     #     "seq_pre_lr": 0.0007,
     #     "dropout": 0.13,
     # }
+
     if args.param:
         params = {
             "lr": args.lr,
@@ -465,6 +470,7 @@ def main():
     # args.seed = int(
     #     1329765522
     # )  #  1329765522  132976111  1329765525    1329765529  1329765519
+    # args.model_num = "4"
 
     args.input_num = 3
     args.epochs = 100
@@ -477,8 +483,7 @@ def main():
         args.update_epoch = int(args.epochs / 2)
 
     args.org = "9606"
-
-    args.model_name = f"2_1_enhanced_transformer13_{args.seq_feature}"
+    args.model_name = f"2_1_enhanced_transformer{args.model_num}_{args.seq_feature}"
     # /home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq480_only.pkl
     args.seq_model_name = f"transformer_{args.seq_feature}_only"
     # /home/Kioedru/code/SSGO/codespace/pretrain/bimamba/9606/bimamba.pkl
@@ -493,7 +498,7 @@ def main():
     args.finetune_path = os.path.join(
         args.path,
         "finetune",
-        "2_1_enhanced2_transformer",
+        "2_1_enhanced_transformer",
         args.model_name,
         args.org,
         args.aspect,
@@ -536,21 +541,29 @@ def main():
     args.lr = params["lr"]
     args.pre_lr = params["pre_lr"]
     args.seq_pre_lr = params["seq_pre_lr"]
-
-    # # 指定随机种子初始化随机数生成器（保证实验的可复现性）
     if args.seed is not None:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
         torch.cuda.manual_seed(args.seed)
         torch.cuda.manual_seed_all(args.seed)
         np.random.seed(args.seed)
-
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
     # 使用一个隐藏层
     args.h_n = 1
     return main_worker(args)
 
 
 def main_worker(args):
+
+    if args.model_num == "4":
+        from codespace.model.predictor_module_2_1_enhanced_tranformer4 import (
+            build_predictor,
+        )
+    elif args.model_num == "5":
+        from codespace.model.predictor_module_2_1_enhanced_tranformer5 import (
+            build_predictor,
+        )
 
     # 准备数据集,esm2+prott5时 seq_2=True
     train_dataset, test_dataset, args.modesfeature_len = get_dataset(
@@ -606,6 +619,7 @@ def main_worker(args):
     seq_pre_model = torch.load(args.seq_pretrained_model, map_location=args.device)
     # 创建预测模型
     predictor_model = build_predictor(seq_pre_model, ppi_feature_pre_model, args)
+    # # 指定随机种子初始化随机数生成器（保证实验的可复现性）
 
     # if args.optim == 'AdamW':
     # 参数字典列表，存储预训练模型和fc_decoder层的参数
@@ -632,6 +646,14 @@ def main_worker(args):
             "params": [
                 p
                 for n, p in predictor_model.fc_decoder.named_parameters()
+                if p.requires_grad
+            ]
+        },
+        # fc_decoder层的参数使用默认学习率
+        {
+            "params": [
+                p
+                for n, p in predictor_model.fusion.named_parameters()
                 if p.requires_grad
             ]
         },
@@ -736,6 +758,7 @@ def finetune(
             perf = evaluate(test_loader, net, args.device)
             perf["default"] = perf["m-aupr"]
             if not args.nni:
+                # if args.nni:
                 perf_write_to_csv(
                     args,
                     epoch,

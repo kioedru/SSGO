@@ -1,47 +1,19 @@
 import torch
 import torch.nn as nn
-import math
 
+# import math
+from codespace.model.gate_net import GateNet
 from codespace.model.multihead_attention_transformer import (
     _get_activation_fn,
     build_transformerEncoder,
 )
-from codespace.utils.MultiModal.EnhancedSemanticAttentionModule import (
-    EnhancedSemanticAttentionModule,
-)
-import copy
+
+# from codespace.utils.MultiModal.EnhancedSemanticAttentionModule import (
+#     EnhancedSemanticAttentionModule,
+# )
+# import copy
 
 # from codespace.model.multihead_attention_transformer import build_transformerEncoder
-
-
-class FusionNet(nn.Module):
-    def __init__(self, args, dim_feedforward, activation, dropout):
-        super().__init__()
-        self.fc_ppi_feature = nn.Linear(dim_feedforward * 2, dim_feedforward)
-        self.act_ppi_feature = activation
-        self.drop_ppi_feature = nn.Dropout(dropout)
-        self.ppi_feature_fison = nn.MultiheadAttention(dim_feedforward, args.nheads)
-
-        self.fc_seq = nn.Linear(dim_feedforward * 2, dim_feedforward)
-        self.act_seq = activation
-        self.drop_seq = nn.Dropout(dropout)
-        self.seq_fison = nn.MultiheadAttention(dim_feedforward, args.nheads)
-        self.fusionlayer = build_transformerEncoder(args)
-
-    def forward(self, hs, hs_src):  # hs[3, 32, 512]
-        fusion_ppi_feature = self.ppi_feature_fison(hs[0:2], hs_src[0:2], hs_src[0:2])[
-            0
-        ]  # 交叉注意力，encoder特征/原始/原始
-
-        fusion_seq = self.seq_fison(
-            hs[2].unsqueeze(0), hs_src[2].unsqueeze(0), hs_src[2].unsqueeze(0)
-        )[0]
-
-        before_fusion_hs = torch.cat(
-            [fusion_ppi_feature, fusion_seq], dim=0
-        )  # 3,32,512
-        after_fusion_hs = self.fusionlayer(before_fusion_hs)  # 3,32,512
-        return after_fusion_hs
 
 
 class FC_Decoder(nn.Module):
@@ -73,6 +45,64 @@ class FC_Decoder(nn.Module):
         return out
 
 
+class FusionNet(nn.Module):
+    def __init__(self, args, dim_feedforward, activation, dropout):
+        super().__init__()
+        self.ppi_feature_fuison = nn.MultiheadAttention(dim_feedforward, args.nheads)
+
+        self.seq_fuison = nn.MultiheadAttention(dim_feedforward, args.nheads)
+
+        self.gatenet1 = GateNet(dim_feedforward * 3, 3)  # for ppi_feature
+        self.gatenet2 = GateNet(dim_feedforward * 3, 3)  # for seq
+        self.fusionlayer = build_transformerEncoder(args)
+
+    def forward(self, hs, hs_src):  # hs\hs_src [3,32,512]
+        gate_ppi_feature_ori = torch.stack([hs[0], hs[1], hs_src[2]], dim=0)  # 3,32,512
+        gate_ppi_feature = torch.einsum("LBD->BLD", gate_ppi_feature_ori).flatten(
+            1
+        )  # 32,1536
+        weight_ppi_featrue = self.gatenet1(gate_ppi_feature)  # 32,2
+        ppi_vec1 = weight_ppi_featrue[:, 0:1] * gate_ppi_feature_ori[0]  # 32,512
+        feature_vec1 = weight_ppi_featrue[:, 1:2] * gate_ppi_feature_ori[1]  # 32,512
+        seq_vec1 = weight_ppi_featrue[:, 2:3] * gate_ppi_feature_ori[2]  # 32,512
+        gate_ppi_feature_vec = torch.stack(
+            [ppi_vec1, feature_vec1, seq_vec1], dim=0
+        )  # 3,32,512
+        # output = weight[:, 0:1] * self.branch1(inputs[0]) + weight[:, 1:2] * self.branch2(inputs[1])
+        q_ppi_feature = gate_ppi_feature_vec[0:2]  # 2,32,512
+        k_ppi_feature = torch.stack(
+            [gate_ppi_feature_vec[2], gate_ppi_feature_vec[2]], dim=0
+        )  # 2,32,512
+        v_ppi_feature = k_ppi_feature
+        fusion_ppi_feature = self.ppi_feature_fuison(
+            q_ppi_feature, k_ppi_feature, v_ppi_feature
+        )[
+            0
+        ]  # 2,32,512 交叉注意力
+
+        gate_seq_ori = torch.stack([hs_src[0], hs_src[1], hs[2]], dim=0)  # 3,32,512
+        gate_seq = torch.einsum("LBD->BLD", gate_seq_ori).flatten(1)  # 32,1536
+        weight_seq = self.gatenet2(gate_seq)
+        ppi_vec2 = weight_seq[:, 0:1] * gate_seq_ori[0]
+        feature_vec2 = weight_seq[:, 1:2] * gate_seq_ori[1]
+        seq_vec2 = weight_seq[:, 2:3] * gate_seq_ori[2]
+        gate_seq_vec = torch.stack(
+            [ppi_vec2, feature_vec2, seq_vec2], dim=0
+        )  # 3,32,512
+        q_seq = torch.stack([gate_seq_vec[2], gate_seq_vec[2]], dim=0)  # 2,32,512
+        k_seq = gate_seq_vec[0:2]
+        v_seq = k_seq
+
+        fusion_seq = self.seq_fuison(q_seq, k_seq, v_seq)[0]  # 2,32,512
+
+        before_fusion_hs = torch.cat(
+            [fusion_ppi_feature, fusion_seq], dim=0
+        )  # 4,32,512
+        after_fusion_hs = self.fusionlayer(before_fusion_hs)  # 4,32,512
+
+        return after_fusion_hs
+
+
 class Predictor(nn.Module):
     def __init__(
         self,
@@ -89,13 +119,19 @@ class Predictor(nn.Module):
 
         self.seq_pre_model = seq_pre_model
         self.ppi_feature_pre_model = ppi_feature_pre_model
-        self.fusion = FusionNet(args, dim_feedforward, activation, dropout)
+
         self.fc_decoder = FC_Decoder(
             num_class=num_class,
             dim_feedforward=dim_feedforward,
             activation=activation,
             dropout=dropout,
             input_num=input_num,
+        )
+        self.fusion = FusionNet(
+            args,
+            dim_feedforward=dim_feedforward,
+            activation=activation,
+            dropout=dropout,
         )
 
     def forward(self, src):
@@ -154,12 +190,12 @@ class Predictor(nn.Module):
         # ----------------------------多头注意力层---------------------------------------
         in_s = in_s.unsqueeze(0)  # 1,32,512
         seq_src = in_s
-
+        # seq_src = torch.cat([seq_src, seq_src], dim=0)  # 2,32,512
         _, hs_ppi_feature = self.ppi_feature_pre_model(src)
         _, hs_seq = self.seq_pre_model(src[2].unsqueeze(0))
         hs = torch.cat([hs_ppi_feature, hs_seq], dim=0)  # 3,32,512
         hs_src = torch.cat([ppi_feature_src, seq_src], dim=0)  # 3,32,512
-        after_fusion_hs = self.fusion(hs, hs_src)  # 3,32,512
+        after_fusion_hs = self.fusion(hs, hs_src)  # 4,32,512
         out = self.fc_decoder(after_fusion_hs)
         return hs, out
 
@@ -173,7 +209,7 @@ def build_predictor(seq_pre_model, ppi_feature_pre_model, args):
         dim_feedforward=args.dim_feedforward,
         activation=_get_activation_fn(args.activation),
         dropout=args.dropout,
-        input_num=args.input_num,
+        input_num=args.input_num + 1,
     )
 
     return predictor
