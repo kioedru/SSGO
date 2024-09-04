@@ -431,7 +431,7 @@ def get_args():
 import nni
 
 
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/finetune.py --fusion transformer --seq_feature seq480 --aspect P --num_class 45 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/finetune.py --fusion transformer --seq_feature seq1024 --aspect P --num_class 45 &
 def main():
     args = get_args()
 
@@ -542,7 +542,8 @@ def main():
         torch.cuda.manual_seed(args.seed)
         torch.cuda.manual_seed_all(args.seed)
         np.random.seed(args.seed)
-
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
     # 使用一个隐藏层
     args.h_n = 1
     return main_worker(args)

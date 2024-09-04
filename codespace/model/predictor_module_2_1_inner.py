@@ -7,48 +7,6 @@ from codespace.model.multihead_attention_transformer import _get_activation_fn
 # from codespace.model.multihead_attention_transformer import build_transformerEncoder
 
 
-class FusionNet(nn.Module):
-    def __init__(self, args, dim_feedforward):
-        super().__init__()
-
-        self.hs_org_norm = nn.LayerNorm(dim_feedforward)
-        self.hs_ppi_feature_norm = nn.LayerNorm(dim_feedforward)
-        self.hs_seq_norm = nn.LayerNorm(dim_feedforward)
-        self.fusionlayer = None
-        if args.fusion == "transformer":
-            from codespace.model.multihead_attention_transformer import (
-                build_transformerEncoder,
-            )
-
-            self.fusionlayer = build_transformerEncoder(args)
-        elif args.fusion == "bimamba":
-            from codespace.model.multihead_attention_bimamba_concat import (
-                build_transformerEncoder,
-            )
-
-            self.fusionlayer = build_transformerEncoder(args)
-        elif args.fusion == "mamba":
-            from codespace.model.multihead_attention_mamba_concat import (
-                build_transformerEncoder,
-            )
-
-            self.fusionlayer = build_transformerEncoder(args)
-
-    def forward(self, hs_ppi_feature, hs_seq, hs_org):
-        hs_org = self.hs_org_norm(hs_org)  # 1,32,512
-        hs_ppi_feature = hs_ppi_feature + hs_org
-        hs_seq = hs_seq + hs_org
-
-        hs_ppi_feature = self.hs_ppi_feature_norm(hs_ppi_feature)
-        hs_seq = self.hs_seq_norm(hs_seq)
-
-        fusion_hs = torch.cat([hs_ppi_feature, hs_seq], dim=0)  # 3,32,512
-        if self.fusion:
-            fusion_hs = self.fusion(fusion_hs)
-
-        return fusion_hs
-
-
 class FC_Decoder(nn.Module):
     def __init__(self, num_class, dim_feedforward, activation, dropout, input_num=3):
         super().__init__()
@@ -91,8 +49,15 @@ class Predictor(nn.Module):
         input_num=3,
     ):
         super().__init__()
+        self.attention_layers_num = args.attention_layers
         self.seq_pre_model = seq_pre_model
         self.ppi_feature_pre_model = ppi_feature_pre_model
+        self.fusion = None
+        from codespace.model.ori_multihead_attention_transformer import (
+            build_transformerEncoder,
+        )
+
+        self.fusion = build_transformerEncoder(args)
 
         self.fc_decoder = FC_Decoder(
             num_class=num_class,
@@ -101,10 +66,8 @@ class Predictor(nn.Module):
             dropout=dropout,
             input_num=input_num,
         )
-        self.fuison = FusionNet(args, dim_feedforward)
 
     def forward(self, src):
-        # -----------------------------------获取对齐后的特征-------------------------------------------
         # src[0]是PPI信息的矩阵
         # batch_size=32因此共32行，19385列
         in_x = src[0]  # 32,19385
@@ -139,7 +102,7 @@ class Predictor(nn.Module):
 
         in_x = in_x.unsqueeze(0)  # 1,32,512
         in_z = in_z.unsqueeze(0)  # 1,32,512
-        ppi_feature_org = torch.cat([in_x, in_z], dim=0)  # 2,32,512
+        ppi_feature_fc = torch.cat([in_x, in_z], dim=0)  # 2,32,512
 
         # src[0]是PPI信息的矩阵
         # batch_size=32因此共32行，19385列
@@ -156,20 +119,38 @@ class Predictor(nn.Module):
         in_s = self.seq_pre_model.activation_x2(in_s)  # 激活层 gelu
         in_s = self.seq_pre_model.dropout_x2(in_s)  # dropout
 
+        # ----------------------------多头注意力层---------------------------------------
         in_s = in_s.unsqueeze(0)  # 1,32,512
-        seq_org = in_s
+        seq_fc = in_s  # 1,32,512
 
-        # -----------------------------------将org融合 512*3->512-------------------------------------------
-        hs_org = torch.cat([ppi_feature_org, seq_org], dim=0)  # 3,32,512
-        hs_org = torch.sum(hs_org, dim=0).unsqueeze(0)  # 1,32,512
+        hs_fc = torch.cat([ppi_feature_fc, seq_fc, seq_fc], dim=0)  # 4,32,512
 
-        ppi_feature_src = src  # 3,32,19385/1389/1024
-        seq_src = src[2].unsqueeze(0)  # 1,32,1024
-        _, hs_ppi_feature = self.ppi_feature_pre_model(ppi_feature_src)  # 2,32,512
-        _, hs_seq = self.seq_pre_model(seq_src)  # 1,32,512
-        hs = torch.cat([hs_ppi_feature, hs_seq], dim=0)
-        fusion_hs = self.fuison(hs_ppi_feature, hs_seq, hs_org)
-        out = self.fc_decoder(fusion_hs)
+        ppi_feature_src = src  # 2，32，512
+        seq_src = src[2].unsqueeze(0)  # 1，32，512
+
+        # ppi_feature的预训练模型的Encoder部分
+        ppi_feature_encoder_output = ppi_feature_fc  # 2,32,512
+        seq_encoder_output = seq_fc  # 1,32,512
+        for num in range(self.attention_layers_num):
+            ppi_feature_output = (
+                self.ppi_feature_pre_model.transformerEncoder.encoder.layers[num](
+                    ppi_feature_encoder_output, seq_encoder_output
+                )
+            )
+
+            seq_output = self.seq_pre_model.transformerEncoder.encoder.layers[num](
+                seq_encoder_output, ppi_feature_encoder_output
+            )
+            ppi_feature_encoder_output = ppi_feature_output
+            seq_encoder_output = seq_output
+
+        hs = torch.cat(
+            [ppi_feature_encoder_output, seq_encoder_output], dim=0
+        )  # 3,32,512
+        if self.fusion:
+            hs = self.fusion(hs)
+
+        out = self.fc_decoder(hs)
         return hs, out
 
 

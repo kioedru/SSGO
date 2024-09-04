@@ -10,7 +10,7 @@ from nni.experiment import Experiment
 experiment = Experiment("local")
 
 # 配置 trial
-experiment.config.trial_command = f"python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 24 --seed 1329765522 --seq_feature seq1024 --aspect P --num_class 45 --device cuda:1 --nni True"
+experiment.config.trial_command = f"python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 25 --seed 1329765522 --seq_feature seq1024 --aspect P --num_class 45 --device cuda:0 --nni True"
 experiment.config.trial_code_directory = "."
 
 # 配置搜索空间
@@ -25,6 +25,6 @@ experiment.config.tuner.class_args["optimize_mode"] = "maximize"
 experiment.config.max_trial_number = 100
 experiment.config.trial_concurrency = 2
 
-experiment.run(8083)
+experiment.run(8093)
 
 # nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/nni_P.py &

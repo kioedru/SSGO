@@ -10,7 +10,7 @@ from nni.experiment import Experiment
 experiment = Experiment("local")
 
 # 配置 trial
-experiment.config.trial_command = f"python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/finetune.py --seed 1329765522 --fusion bimamba --seq_feature seq1024 --aspect P --num_class 45 --device cuda:0 --nni True"
+experiment.config.trial_command = f"python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/finetune.py --seed 1329765522 --fusion transformer --seq_feature seq1024 --aspect P --num_class 45 --device cuda:0 --nni True"
 experiment.config.trial_code_directory = "."
 
 # 配置搜索空间

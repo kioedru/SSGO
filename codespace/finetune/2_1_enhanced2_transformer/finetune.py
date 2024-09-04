@@ -420,6 +420,10 @@ def parser_args():
         default="transformer",
         type=str,
     )
+    parser.add_argument(
+        "--model_num",
+        type=str,
+    )
     args = parser.parse_args()
     return args
 
@@ -432,7 +436,7 @@ def get_args():
 import nni
 
 
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced2_transformer/finetune.py --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced2_transformer/finetune.py --model_num 9 --fusion transformer --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:0 &
 # nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced2_transformer/finetune.py --seq_feature seq1024 --aspect F --num_class 38 --seed 1329765522 --device cuda:0 &
 # nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_enhanced2_transformer/finetune.py --seq_feature seq1024 --aspect C --num_class 35 --seed 1329765522 --device cuda:0 &
 def main():
@@ -459,12 +463,13 @@ def main():
     print(params)
 
     # 需注释的参数
-    args.seq_feature = "seq1024"
-    args.aspect = "P"
-    args.num_class = int(45)
-    args.seed = int(
-        1329765522
-    )  #  1329765522  132976111  1329765525    1329765529  1329765519
+    # args.seq_feature = "seq1024"
+    # args.aspect = "P"
+    # args.num_class = int(45)
+    # args.seed = int(
+    #     1329765522
+    # )  #  1329765522  132976111  1329765525    1329765529  1329765519
+    # args.model_num=9
 
     args.input_num = 3
     args.epochs = 100
@@ -478,7 +483,7 @@ def main():
 
     args.org = "9606"
 
-    args.model_name = f"2_1_enhanced_transformer18_{args.seq_feature}"
+    args.model_name = f"2_1_enhanced_transformer{args.model_num}_{args.seq_feature}"
     # /home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq480_only.pkl
     args.seq_model_name = f"transformer_{args.seq_feature}_only"
     # /home/Kioedru/code/SSGO/codespace/pretrain/bimamba/9606/bimamba.pkl
@@ -632,6 +637,13 @@ def main_worker(args):
             "params": [
                 p
                 for n, p in predictor_model.fc_decoder.named_parameters()
+                if p.requires_grad
+            ]
+        },
+        {
+            "params": [
+                p
+                for n, p in predictor_model.fusion.named_parameters()
                 if p.requires_grad
             ]
         },

@@ -91,12 +91,67 @@ class Predictor(nn.Module):
         )
 
     def forward(self, src):
+        # src[0]是PPI信息的矩阵
+        # batch_size=32因此共32行，19385列
+        in_x = src[0]  # 32,19385
+        in_x = self.ppi_feature_pre_model.input_proj_x1(
+            in_x
+        )  # 线性层，输入X的列数19385，输出512*2
+        in_x = self.ppi_feature_pre_model.norm_x1(in_x)  # 标准化层，512*2
+        in_x = self.ppi_feature_pre_model.activation_x1(in_x)  # 激活层 gelu
+        in_x = self.ppi_feature_pre_model.dropout_x1(in_x)  # dropout
 
+        # src[1]是蛋白质结构域和亚细胞位置信息的矩阵
+        # batch_size=32因此共32行，1389列
+        in_z = src[1]  # 32,1389
+        in_z = self.ppi_feature_pre_model.input_proj_z1(
+            in_z
+        )  # 线性层，输入Z的列数1389，输出512*2
+        in_z = self.ppi_feature_pre_model.norm_z1(in_z)
+        in_z = self.ppi_feature_pre_model.activation_z1(in_z)
+        in_z = self.ppi_feature_pre_model.dropout_z1(in_z)
+
+        in_x = self.ppi_feature_pre_model.input_proj_x2(
+            in_x
+        )  # 线性层，输入512*2，输出512
+        in_x = self.ppi_feature_pre_model.norm_x2(in_x)  # 标准化层，512
+        in_x = self.ppi_feature_pre_model.activation_x2(in_x)  # 激活层 gelu
+        in_x = self.ppi_feature_pre_model.dropout_x2(in_x)  # dropout
+
+        in_z = self.ppi_feature_pre_model.input_proj_z2(in_z)
+        in_z = self.ppi_feature_pre_model.norm_z2(in_z)
+        in_z = self.ppi_feature_pre_model.activation_z2(in_z)
+        in_z = self.ppi_feature_pre_model.dropout_z2(in_z)
+
+        in_x = in_x.unsqueeze(0)  # 1,32,512
+        in_z = in_z.unsqueeze(0)  # 1,32,512
+        ppi_feature_src = torch.cat([in_x, in_z], dim=0)  # 2,32,512
+
+        # src[0]是PPI信息的矩阵
+        # batch_size=32因此共32行，19385列
+        in_s = src[2]  # 1,32,19385
+        in_s = self.seq_pre_model.input_proj_x1(
+            in_s
+        )  # 线性层，输入X的列数19385，输出512*2
+        in_s = self.seq_pre_model.norm_x1(in_s)  # 标准化层，512*2
+        in_s = self.seq_pre_model.activation_x1(in_s)  # 激活层 gelu
+        in_s = self.seq_pre_model.dropout_x1(in_s)  # dropout
+
+        in_s = self.seq_pre_model.input_proj_x2(in_s)  # 线性层，输入512*2，输出512
+        in_s = self.seq_pre_model.norm_x2(in_s)  # 标准化层，512
+        in_s = self.seq_pre_model.activation_x2(in_s)  # 激活层 gelu
+        in_s = self.seq_pre_model.dropout_x2(in_s)  # dropout
+
+        # ----------------------------多头注意力层---------------------------------------
+        in_s = in_s.unsqueeze(0)  # 1,32,512
+        seq_src = in_s
+
+        hs_src = torch.cat([ppi_feature_src, seq_src, seq_src], dim=0)  # 4,32,512
         _, hs_ppi_feature = self.ppi_feature_pre_model(src)
         _, hs_seq = self.seq_pre_model(src[2].unsqueeze(0))
         hs = torch.cat([hs_ppi_feature, hs_seq, hs_seq], dim=0)  # 4,32,512
 
-        after_fusion_hs = self.fusion(hs)  # 4,32,512
+        after_fusion_hs = self.fusion(hs, hs_src)  # 4,32,512
 
         out = self.fc_decoder(after_fusion_hs)
         return hs, out

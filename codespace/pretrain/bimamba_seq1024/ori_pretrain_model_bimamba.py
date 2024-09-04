@@ -6,7 +6,6 @@ import sys
 import os
 import os.path as osp
 from transformers import AutoTokenizer, AutoModel
-from typing import Optional, List
 
 import torch
 from torch import Tensor
@@ -85,7 +84,7 @@ class Pre_Train_Model(nn.Module):
         self.norm_wz = nn.LayerNorm(dim_feedforward * 2)
         self.norm_ws = nn.LayerNorm(dim_feedforward * 2)
 
-    def forward(self, src, src_addition: Optional[Tensor] = None):
+    def forward(self, src):
         in_s = src[2]  # 32,2000
 
         # ----------------------------多层感知机MLP---------------------------------------

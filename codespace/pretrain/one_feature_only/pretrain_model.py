@@ -96,7 +96,7 @@ class Pre_Train_Model(nn.Module):
 
 
 # 创建预训练模型
-def build_Pre_Train_Model(args):
+def build_Pre_Train_Model(args, featurelen=[1024]):
     if args.encoder_name == "transformer":
         from codespace.model.multihead_attention_transformer import (
             build_transformerEncoder,
@@ -115,7 +115,7 @@ def build_Pre_Train_Model(args):
     model = Pre_Train_Model(
         transformerEncoder=build_transformerEncoder(args),
         transformerDecoder=build_transformerEncoder(args),
-        feature_len=args.modesfeature_len,
+        feature_len=featurelen,
         activation=_get_activation_fn(args.activation),
         dropout=args.dropout,
     )
