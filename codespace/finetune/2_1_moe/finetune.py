@@ -436,9 +436,9 @@ def get_args():
 import nni
 
 
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 25 --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:1 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 23 --seq_feature seq1024 --aspect F --num_class 38 --seed 1329765522 --device cuda:0 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 23 --seq_feature seq1024 --aspect C --num_class 35 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 24 --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 24 --seq_feature seq1024 --aspect F --num_class 38 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_moe/finetune.py --model_num 24 --seq_feature seq1024 --aspect C --num_class 35 --seed 1329765522 --device cuda:0 &
 def main():
     args = get_args()
 
@@ -672,9 +672,9 @@ def main_worker(args):
     )
     # 学习率调度器 指定优化器，step_size=50，默认gamma=0.1，每隔step_size个周期就将每个参数组的学习率*gamma
     if args.nni:
-        steplr = lr_scheduler.StepLR(predictor_model_optimizer, 50)
+        steplr = lr_scheduler.StepLR(predictor_model_optimizer, 10)
     else:
-        steplr = lr_scheduler.StepLR(predictor_model_optimizer, 50)
+        steplr = lr_scheduler.StepLR(predictor_model_optimizer, 10)
     patience = 10
     changed_lr = False
 
@@ -715,27 +715,22 @@ def finetune(
     net.train()
     print("training on", device)
     for epoch in range(num_epochs):
-        if args.pretrain_update == 1:  # 不更新参数
-            for p in model.seq_pre_model.parameters():
-                p.requires_grad = False
-            for p in model.ppi_feature_pre_model.parameters():
-                p.requires_grad = False
-        if args.pretrain_update == 2:  # 更新后半部分参数
-            if epoch >= (args.epochs / 2):
-                for p in model.seq_pre_model.parameters():
-                    p.requires_grad = True
-                for p in model.ppi_feature_pre_model.parameters():
-                    p.requires_grad = True
-            else:
-                for p in model.seq_pre_model.parameters():
-                    p.requires_grad = False
-                for p in model.ppi_feature_pre_model.parameters():
-                    p.requires_grad = False
-        if args.pretrain_update == 0:  # 更新全部参数
+        
+        if epoch >= 50:
             for p in model.seq_pre_model.parameters():
                 p.requires_grad = True
             for p in model.ppi_feature_pre_model.parameters():
                 p.requires_grad = True
+        else:
+            for p in model.seq_pre_model.parameters():
+                p.requires_grad = False
+            for p in model.ppi_feature_pre_model.parameters():
+                p.requires_grad = False
+       
+
+        # # 检查哪些参数会被训练
+        # for name, param in net.named_parameters():
+        #     print(f"{name}: {'Yes' if param.requires_grad else 'No'}")
         start = time.time()
         batch_count = 0
         train_l_sum = 0.0

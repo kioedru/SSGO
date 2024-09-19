@@ -103,11 +103,13 @@ def build_Pre_Train_Model(args, featurelen=[1024]):
             _get_activation_fn,
         )
     elif args.encoder_name == "mamba":
+
         from codespace.model.multihead_attention_mamba_concat import (
             build_transformerEncoder,
             _get_activation_fn,
         )
     elif args.encoder_name == "bimamba":
+
         from codespace.model.multihead_attention_bimamba_concat import (
             build_transformerEncoder,
             _get_activation_fn,

@@ -2,6 +2,7 @@ search_space = {
     "lr": {"_type": "loguniform", "_value": [1e-5, 0.1]},
     "pre_lr": {"_type": "loguniform", "_value": [1e-5, 0.1]},
     "seq_pre_lr": {"_type": "loguniform", "_value": [1e-5, 0.1]},
+    "fusion_lr": {"_type": "loguniform", "_value": [1e-5, 0.1]},
     "dropout": {"_type": "uniform", "_value": [0.1, 0.5]},
 }
 
@@ -24,6 +25,6 @@ experiment.config.tuner.class_args["seed"] = 100
 experiment.config.max_trial_number = 100
 experiment.config.trial_concurrency = 2
 
-experiment.run(8093)
+experiment.run(8098)
 
 # nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/nni_P.py &

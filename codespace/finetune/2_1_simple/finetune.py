@@ -405,6 +405,11 @@ def parser_args():
         type=float,
     )
     parser.add_argument(
+        "--fusion_lr",
+        default=1e-4,
+        type=float,
+    )
+    parser.add_argument(
         "--param",
         default=False,
         type=bool,
@@ -431,11 +436,24 @@ def get_args():
 import nni
 
 
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/finetune.py --fusion transformer --seq_feature seq1024 --aspect P --num_class 45 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/finetune.py --seed 1329765522 --fusion None --seq_feature seq1024 --aspect P --num_class 45 &
 def main():
     args = get_args()
-
-    params = {"lr": 1e-4, "dropout": 0.3, "pre_lr": 1e-5, "seq_pre_lr": 1e-5}
+    if args.seed is not None:
+        random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
+        np.random.seed(args.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    params = {
+        "lr": 1e-4,
+        "dropout": 0.3,
+        "pre_lr": 1e-5,
+        "seq_pre_lr": 1e-5,
+        "fusion_lr": 0.00001,
+    }
     # params = {
     #     "lr": 0.01,
     #     "pre_lr": 0.001,
@@ -448,6 +466,7 @@ def main():
             "dropout": args.dropout,
             "pre_lr": args.pre_lr,
             "seq_pre_lr": args.seq_pre_lr,
+            "fusion_lr": args.fusion_lr,
         }
     # 获取需要评估的超参
     if args.nni:
@@ -526,7 +545,7 @@ def main():
 
     args.nheads = int(8)
     args.dropout = params["dropout"]
-    args.attention_layers = int(6)
+    args.attention_layers = int(2)
     args.gamma_pos = int(0)
     args.gamma_neg = int(2)
     args.batch_size = int(32)
@@ -534,16 +553,10 @@ def main():
     args.lr = params["lr"]
     args.pre_lr = params["pre_lr"]
     args.seq_pre_lr = params["seq_pre_lr"]
+    args.fusion_lr = params["fusion_lr"]
 
     # # 指定随机种子初始化随机数生成器（保证实验的可复现性）
-    if args.seed is not None:
-        random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed(args.seed)
-        torch.cuda.manual_seed_all(args.seed)
-        np.random.seed(args.seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+
     # 使用一个隐藏层
     args.h_n = 1
     return main_worker(args)

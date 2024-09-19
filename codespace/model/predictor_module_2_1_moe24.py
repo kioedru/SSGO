@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import math
 
-
 from codespace.model.multihead_attention_transformer_cross_attention import (
     _get_activation_fn,
     build_transformerEncoder,
@@ -63,13 +62,6 @@ class Predictor(nn.Module):
             dropout=dropout,
             input_num=input_num,
         )
-        # self.fc_ppi_feature = nn.Linear(dim_feedforward * 2, dim_feedforward)
-        # self.act_ppi_feature = activation
-        # self.drop_ppi_feature = nn.Dropout(dropout)
-
-        # self.fc_seq = nn.Linear(dim_feedforward * 2, dim_feedforward)
-        # self.act_seq = activation
-        # self.drop_seq = nn.Dropout(dropout)
 
     def forward(self, src):
 

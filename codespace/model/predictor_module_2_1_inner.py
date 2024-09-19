@@ -53,11 +53,14 @@ class Predictor(nn.Module):
         self.seq_pre_model = seq_pre_model
         self.ppi_feature_pre_model = ppi_feature_pre_model
         self.fusion = None
-        from codespace.model.ori_multihead_attention_transformer import (
-            build_transformerEncoder,
-        )
+        self.layernorm1 = nn.LayerNorm(dim_feedforward)
+        self.layernorm2 = nn.LayerNorm(dim_feedforward)
+        self.dropout = nn.Dropout(dropout)
+        # from codespace.model.ori_multihead_attention_transformer import (
+        #     build_transformerEncoder,
+        # )
 
-        self.fusion = build_transformerEncoder(args)
+        # self.fusion = build_transformerEncoder(args)
 
         self.fc_decoder = FC_Decoder(
             num_class=num_class,
@@ -119,7 +122,6 @@ class Predictor(nn.Module):
         in_s = self.seq_pre_model.activation_x2(in_s)  # 激活层 gelu
         in_s = self.seq_pre_model.dropout_x2(in_s)  # dropout
 
-        # ----------------------------多头注意力层---------------------------------------
         in_s = in_s.unsqueeze(0)  # 1,32,512
         seq_fc = in_s  # 1,32,512
 
@@ -141,8 +143,12 @@ class Predictor(nn.Module):
             seq_output = self.seq_pre_model.transformerEncoder.encoder.layers[num](
                 seq_encoder_output, ppi_feature_encoder_output
             )
-            ppi_feature_encoder_output = ppi_feature_output
-            seq_encoder_output = seq_output
+            ppi_feature_encoder_output = self.layernorm1(
+                self.dropout(ppi_feature_output) + ppi_feature_encoder_output
+            )
+            seq_encoder_output = self.layernorm2(
+                self.dropout(seq_output) + seq_encoder_output
+            )
 
         hs = torch.cat(
             [ppi_feature_encoder_output, seq_encoder_output], dim=0

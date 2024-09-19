@@ -126,6 +126,8 @@ class TransformerEncoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(dim_feedforward)
         self.norm2 = nn.LayerNorm(dim_feedforward)
 
+        self.norm3 = nn.LayerNorm(dim_feedforward)
+        self.norm4 = nn.LayerNorm(dim_feedforward)
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
 
@@ -154,10 +156,14 @@ class TransformerEncoderLayer(nn.Module):
         )[
             0
         ]  # 2,32,512
+        src_ppi_feature = src_ppi_feature + self.dropout(src_ppi_feature)
+        src_ppi_feature = self.norm3(src_ppi_feature)
 
         q_seq = src[2:4]  # 2,32,512
         k_seq = v_seq = src[0:2]  # 2,32,512
         src_seq = self.seq_fusion(q_seq, k_seq, v_seq)[0]  # 2,32,512
+        src_seq = src_seq + self.dropout(src_seq)
+        src_seq = self.norm4(src_seq)
 
         src = torch.cat([src_ppi_feature, src_seq], dim=0)  # 4,32,512
         # 将一个张量和一个位置编码相加，得到一个带有位置信息的张量  2,32,512

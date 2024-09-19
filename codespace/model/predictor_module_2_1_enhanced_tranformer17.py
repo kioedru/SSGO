@@ -1,15 +1,11 @@
 import torch
 import torch.nn as nn
-import math
 
 from codespace.model.multihead_attention_transformer import (
     _get_activation_fn,
     build_transformerEncoder,
 )
-from codespace.utils.MultiModal.EnhancedSemanticAttentionModule import (
-    EnhancedSemanticAttentionModule,
-)
-import copy
+
 
 # from codespace.model.multihead_attention_transformer import build_transformerEncoder
 
@@ -59,12 +55,7 @@ class Predictor(nn.Module):
 
         self.seq_pre_model = seq_pre_model
         self.ppi_feature_pre_model = ppi_feature_pre_model
-        self.fusion_seq = EnhancedSemanticAttentionModule(
-            global_dim=dim_feedforward, local_dim=dim_feedforward, num_heads=8
-        )
-        self.fusion_ppi_feature = EnhancedSemanticAttentionModule(
-            global_dim=dim_feedforward, local_dim=dim_feedforward, num_heads=8
-        )
+
         self.fusion = build_transformerEncoder(args)
         self.fc_decoder = FC_Decoder(
             num_class=num_class,
