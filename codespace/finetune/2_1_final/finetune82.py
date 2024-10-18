@@ -460,10 +460,10 @@ def get_args():
 
 import nni
 
-
+# 1937334707 2286963368 2983437914 3267569468
 # nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_final/finetune82.py --model_num 82 --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:0 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_final/finetune82.py --model_num 82 --seq_feature seq1024 --aspect F --num_class 38 --seed 1329765522 --device cuda:0 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_final/finetune82.py --model_num 82 --seq_feature seq1024 --aspect C --num_class 35 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_final/finetune82.py --model_num 82 --seq_feature seq1024 --aspect F --num_class 38 --seed 3267569468 --device cuda:1 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_final/finetune82.py --model_num 82 --seq_feature seq1024 --aspect C --num_class 35 --seed 3267569468 --device cuda:1 &
 def main():
     args = get_args()
     print(args.nni_save, type(args.nni_save))
@@ -548,7 +548,7 @@ def main():
         "2_1_final",
         args.model_name,
         args.org,
-        args.aspect,
+        'new'+args.aspect,
         f"{args.seed}",
         f"{args.update_epoch}:{args.epochs}",
     )
@@ -675,10 +675,19 @@ def main_worker(args):
     seq_pre_model_new_state_dict.update(seq_pre_model_state_dict)
     seq_pre_model_new.load_state_dict(seq_pre_model_new_state_dict)
     if args.aspect == "P":
+        # pre_model17 = torch.load(
+        #     "/home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/2_1_seq1024_simple_fusion=transformer/9606/P/12301281/50:100/epoch_model/seed=12301281_epoch90_model_m-aupr0.35021746071914245_Fmax0.44805194805194803.pkl",
+        #     map_location=args.device,
+        # )
+        # pre_model17 = torch.load(
+        #     "/home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/2_1_seq1024_simple_fusion=transformer/9606/P/1329765522/50:100/epoch_model/seed=1329765522_epoch87_model_m-aupr0.33233227609024796_Fmax0.4527220630372493.pkl",
+        #     map_location=args.device,
+        # )
         pre_model17 = torch.load(
-            "/home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/2_1_seq1024_simple_fusion=transformer/9606/P/12301281/50:100/epoch_model/seed=12301281_epoch90_model_m-aupr0.35021746071914245_Fmax0.44805194805194803.pkl",
+            "/home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/2_1_seq1024_simple_fusion=transformer/9606/P/1329765522/50:100/epoch_model/seed=1329765522_epoch86_model_m-aupr0.3643218469598184_Fmax0.4571428571428572.pkl",
             map_location=args.device,
         )
+
     elif args.aspect == "F":
         pre_model17 = torch.load(
             "/home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/2_1_seq1024_simple_fusion=transformer/9606/F/1329765522/50:100/epoch_model/epoch18_model_m-aupr0.16869644751081067_Fmax0.25555555555555554.pkl",
@@ -844,14 +853,14 @@ def finetune(
         # torch.save(
         #     net.state_dict(), os.path.join(args.finetune_model_path, f"{epoch}.pkl")
         # )
-        if args.aspect == "F" and epoch == 42:
-            torch.save(
-                net, os.path.join(args.finetune_model_path, f"{epoch}_model.pkl")
-            )
-        if args.aspect == "C" and epoch == 53:
-            torch.save(
-                net, os.path.join(args.finetune_model_path, f"{epoch}_model.pkl")
-            )
+        # if args.aspect == "F" and epoch == 19:
+        #     torch.save(
+        #         net, os.path.join(args.finetune_model_path, f"{epoch}_model.pkl")
+        #     )
+        # if args.aspect == "C" and epoch == 53:
+        #     torch.save(
+        #         net, os.path.join(args.finetune_model_path, f"{epoch}_model.pkl")
+        #     )
     if args.nni:
         nni.report_final_result(perf)
 

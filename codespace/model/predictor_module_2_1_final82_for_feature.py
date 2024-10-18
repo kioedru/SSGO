@@ -156,11 +156,11 @@ class Predictor(nn.Module):
 
             ppi_feature_output = (
                 self.ppi_feature_pre_model.transformerEncoder.encoder.layers[num](
-                    ppi_feature_encoder_output
+                    ppi_feature_encoder_output, seq_encoder_output
                 )
             )
             seq_output = self.seq_pre_model.transformerEncoder.encoder.layers[num](
-                seq_encoder_output
+                seq_encoder_output, ppi_feature_encoder_output
             )
             ppi_feature_encoder_output = ppi_feature_output
             seq_encoder_output = seq_output
@@ -182,7 +182,13 @@ class Predictor(nn.Module):
         weighted_gate_hs = fusion_hs_permuted * weight  # 32, 6, 512
         weighted_gate_hs = torch.einsum("BLD->LBD", weighted_gate_hs)  # 6,32,512
         fc_output = self.fc_decoder(weighted_gate_hs)  # 32,45
-        return hs_fc, fc_output, fusion_model17, hs_model39, weighted_gate_hs
+        return (
+            hs_fc,
+            fc_output,
+            fusion_model17,  # 3,32,512
+            hs_model39,  # 3,32,512
+            weighted_gate_hs,  # 6,32,512
+        )  # mlp后的/decoder结果/上/下/门控后
 
 
 def build_predictor(seq_pre_model, ppi_feature_pre_model, pre_model17, args):

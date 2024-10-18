@@ -73,8 +73,10 @@ class Predictor(nn.Module):
         activation,
         dropout,
         input_num=3,
+        db=False
     ):
         super().__init__()
+        self.db=db
         self.attention_layers_num = args.attention_layers
         self.seq_pre_model = seq_pre_model
         self.ppi_feature_pre_model = ppi_feature_pre_model
@@ -182,10 +184,12 @@ class Predictor(nn.Module):
         weighted_gate_hs = fusion_hs_permuted * weight  # 32, 6, 512
         weighted_gate_hs = torch.einsum("BLD->LBD", weighted_gate_hs)  # 6,32,512
         fc_output = self.fc_decoder(weighted_gate_hs)  # 32,45
+        if self.db:
+            return hs_fc, fc_output,fusion_model17, hs_model39,weighted_gate_hs
         return hs_fc, fc_output
 
 
-def build_predictor(seq_pre_model, ppi_feature_pre_model, pre_model17, args):
+def build_predictor(seq_pre_model, ppi_feature_pre_model, pre_model17, args,db=False):
     predictor = Predictor(
         args,
         seq_pre_model=seq_pre_model,
@@ -196,6 +200,7 @@ def build_predictor(seq_pre_model, ppi_feature_pre_model, pre_model17, args):
         activation=_get_activation_fn(args.activation),
         dropout=args.dropout,
         input_num=args.input_num,
+        db=db
     )
 
     return predictor

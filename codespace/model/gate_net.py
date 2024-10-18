@@ -39,14 +39,14 @@ class GateNet(nn.Module):
 
 # output = weight[:, 0:1] * self.branch1(inputs[0]) + weight[:, 1:2] * self.branch2(inputs[1])
 if __name__ == "__main__":
-    block = GateNet(45 * 2, 2)
+    block = GateNet(45 * 4, 4)
     # input = torch.rand(32, 45 * 2)
 
     # output = block(input)
     # print(input.size(), output.size())
     # print(output)
 
-    fusion_hs = torch.rand(2, 32, 45)
+    fusion_hs = torch.rand(4, 32, 45)
     fusion_hs_flatten = torch.einsum("LBD->BLD", fusion_hs).flatten(1)  # 32,45*2
     fusion_hs_permuted = torch.einsum("LBD->BLD", fusion_hs)  # 32, 2,45
     weight = block(fusion_hs_flatten)
@@ -54,9 +54,9 @@ if __name__ == "__main__":
     weighted_gate_hs2 = weight[:, 1:2] * fusion_hs[1]  # 2,32,45
     weighted_gate_hs0 = torch.stack([weighted_gate_hs1, weighted_gate_hs2], dim=0)
 
-    weight = weight.unsqueeze(-1)  # 32,2,1
-    weighted_gate_hs = fusion_hs_permuted * weight  # 32, 2, 45
-    weighted_gate_hs = torch.einsum("BLD->LBD", weighted_gate_hs)  # 2, 32, 45
-    weighted_gate_hs = torch.sum(weighted_gate_hs, dim=1)  # 32, 45
+    # weight = weight.unsqueeze(-1)  # 32,2,1
+    # weighted_gate_hs = fusion_hs_permuted * weight  # 32, 2, 45
+    # weighted_gate_hs = torch.einsum("BLD->LBD", weighted_gate_hs)  # 2, 32, 45
+    # weighted_gate_hs = torch.sum(weighted_gate_hs, dim=1)  # 32, 45
 
-    print(weighted_gate_hs.size())
+    print(weighted_gate_hs0.size(), weight.shape)

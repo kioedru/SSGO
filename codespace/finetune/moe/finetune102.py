@@ -435,7 +435,7 @@ def parser_args():
     )
     parser.add_argument(
         "--model_num",
-        default="47",
+        default="102",
         type=str,
     )
     parser.add_argument(
@@ -461,9 +461,9 @@ def get_args():
 import nni
 
 
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/addition_exp/finetune.py --model_num 91 --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:0 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/addition_exp/finetune.py --model_num 91 --seq_feature seq1024 --aspect F --num_class 38 --seed 1329765522 --device cuda:0 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/addition_exp/finetune.py --model_num 91 --seq_feature seq1024 --aspect C --num_class 35 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/moe/finetune102.py --model_num 102 --seq_feature seq1024 --aspect P --num_class 45 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/moe/finetune102.py --model_num 102 --seq_feature seq1024 --aspect F --num_class 38 --seed 1329765522 --device cuda:0 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/moe/finetune102.py --model_num 102 --seq_feature seq1024 --aspect C --num_class 35 --seed 1329765522 --device cuda:0 &
 def main():
     args = get_args()
     print(args.nni_save, type(args.nni_save))
@@ -530,7 +530,7 @@ def main():
         args.update_epoch = int(args.epochs / 2)
 
     args.org = "9606"
-    args.model_name = f"addition_exp_{args.model_num}_{args.seq_feature}"
+    args.model_name = f"moe_{args.model_num}_{args.seq_feature}"
     # /home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq480_only.pkl
     args.seq_model_name = f"transformer_{args.seq_feature}_only"
     # /home/Kioedru/code/SSGO/codespace/pretrain/bimamba/9606/bimamba.pkl
@@ -545,7 +545,7 @@ def main():
     args.finetune_path = os.path.join(
         args.path,
         "finetune",
-        "addition_exp",
+        "moe",
         args.model_name,
         args.org,
         args.aspect,
@@ -596,8 +596,8 @@ def main():
 
 def main_worker(args):
 
-    if args.model_num == "91":
-        from codespace.model.predictor_module_addition_exp91 import build_predictor
+    if args.model_num == "102":
+        from codespace.model.predictor_module_moe102 import build_predictor
     # 准备数据集,esm2+prott5时 seq_2=True
     train_dataset, test_dataset, args.modesfeature_len = get_dataset(
         args, args.aspect, args.org
@@ -639,7 +639,9 @@ def main_worker(args):
 
     # optimizer
     args.lr_mult = args.batch_size / 32
-
+    # pre_model_param_dicts = [
+    #     {"params": [p for n, p in pre_model.named_parameters() if p.requires_grad]},
+    # ]
     torch.cuda.empty_cache()
 
     # 载入预训练模型字典
@@ -656,46 +658,32 @@ def main_worker(args):
     ppi_feature_pre_model.load_state_dict(ppi_feature_pre_model_state_dict)
     seq_pre_model.load_state_dict(seq_pre_model_state_dict)
     # 载入修改的预训练模型
-    # ppi_feature_pre_model_new = build_Pre_Train_Model_bimamba_new(args).to(args.device)
-    # seq_pre_model_new = build_Pre_Train_Model_transformer_new(args).to(args.device)
+    ppi_feature_pre_model_new = build_Pre_Train_Model_bimamba_new(args).to(args.device)
+    seq_pre_model_new = build_Pre_Train_Model_transformer_new(args).to(args.device)
 
     # # 过滤掉不匹配的键  初步认为没必要过滤，因为继承而来
     # ppi_feature_pre_model_state_dict = {
     #     k: v for k, v in ppi_feature_pre_model_state_dict.items() if k in ppi_feature_pre_model_state_dict
     # }
-    # ppi_feature_pre_model_new_state_dict = ppi_feature_pre_model_new.state_dict()
-    # ppi_feature_pre_model_new_state_dict.update(ppi_feature_pre_model_state_dict)
+    ppi_feature_pre_model_new_state_dict = ppi_feature_pre_model_new.state_dict()
+    ppi_feature_pre_model_new_state_dict.update(ppi_feature_pre_model_state_dict)
 
     # 加载更新后的state_dict
-    # ppi_feature_pre_model_new.load_state_dict(ppi_feature_pre_model_new_state_dict)
+    ppi_feature_pre_model_new.load_state_dict(ppi_feature_pre_model_new_state_dict)
 
-    # seq_pre_model_new_state_dict = seq_pre_model_new.state_dict()
-    # seq_pre_model_new_state_dict.update(seq_pre_model_state_dict)
-    # seq_pre_model_new.load_state_dict(seq_pre_model_new_state_dict)
-    if args.aspect == "P":
-        pre_model17 = torch.load(
-            "/home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/2_1_seq1024_simple_fusion=transformer/9606/P/12301281/50:100/epoch_model/seed=12301281_epoch90_model_m-aupr0.35021746071914245_Fmax0.44805194805194803.pkl",
-            map_location=args.device,
-        )
-    elif args.aspect == "F":
-        pre_model17 = torch.load(
-            "/home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/2_1_seq1024_simple_fusion=transformer/9606/F/1329765522/50:100/epoch_model/epoch18_model_m-aupr0.16869644751081067_Fmax0.25555555555555554.pkl",
-            map_location=args.device,
-        )
-    elif args.aspect == "C":
-        pre_model17 = torch.load(
-            "/home/Kioedru/code/SSGO/codespace/finetune/2_1_simple/2_1_seq1024_simple_fusion=transformer/9606/C/12301281/50:100/epoch_model/seed=12301281_epoch91_model_m-aupr0.38277638146035475_Fmax0.4093959731543624.pkl",
-            map_location=args.device,
-        )
+    seq_pre_model_new_state_dict = seq_pre_model_new.state_dict()
+    seq_pre_model_new_state_dict.update(seq_pre_model_state_dict)
+    seq_pre_model_new.load_state_dict(seq_pre_model_new_state_dict)
+
     # 创建预测模型
     predictor_model = build_predictor(
+        seq_pre_model_new,
+        ppi_feature_pre_model_new,
         seq_pre_model,
         ppi_feature_pre_model,
-        pre_model17,
         args,
     )
-    for p in predictor_model.pre_model17.parameters():
-        p.requires_grad = False
+
     predictor_model_param_dicts = [
         {
             "params": [
@@ -723,6 +711,36 @@ def main_worker(args):
         {
             "params": [
                 p for n, p in predictor_model.gate.named_parameters() if p.requires_grad
+            ],
+        },
+        {
+            "params": [
+                p
+                for n, p in predictor_model.expert_list.named_parameters()
+                if p.requires_grad
+            ],
+        },
+        {
+            "params": [
+                p
+                for n, p in predictor_model.ppi_feature_pre_model17.named_parameters()
+                if p.requires_grad
+            ],
+            "lr": args.pre_lr,
+        },
+        {
+            "params": [
+                p
+                for n, p in predictor_model.seq_pre_model17.named_parameters()
+                if p.requires_grad
+            ],
+            "lr": args.seq_pre_lr,
+        },
+        {
+            "params": [
+                p
+                for n, p in predictor_model.fusion_model17.named_parameters()
+                if p.requires_grad
             ],
         },
     ]
@@ -808,7 +826,7 @@ def finetune(
             protein_data[2] = protein_data[2].to(device)
             label = label.to(device)
 
-            rec, output = net(protein_data)
+            rec, output, _, _, _ = net(protein_data)
             l = loss(output, label, rec)
             optimizer.zero_grad()
             l.backward()
@@ -842,14 +860,14 @@ def finetune(
         # torch.save(
         #     net.state_dict(), os.path.join(args.finetune_model_path, f"{epoch}.pkl")
         # )
-        if args.aspect == "F" and epoch == 42:
-            torch.save(
-                net, os.path.join(args.finetune_model_path, f"{epoch}_model.pkl")
-            )
-        if args.aspect == "C" and epoch == 53:
-            torch.save(
-                net, os.path.join(args.finetune_model_path, f"{epoch}_model.pkl")
-            )
+        # if args.aspect == "F" and epoch == 42:
+        #     torch.save(
+        #         net, os.path.join(args.finetune_model_path, f"{epoch}_model.pkl")
+        #     )
+        # if args.aspect == "C" and epoch == 53:
+        #     torch.save(
+        #         net, os.path.join(args.finetune_model_path, f"{epoch}_model.pkl")
+        #     )
     if args.nni:
         nni.report_final_result(perf)
 
@@ -872,7 +890,7 @@ def evaluate(test_loader, predictor_model, device):
         label = label.to(device)
 
         # compute output
-        rec, output = predictor_model(proteins)
+        rec, output, _, _, _ = predictor_model(proteins)
         output_sm = torch.nn.functional.sigmoid(output)
 
         # collect output and label for metric calculation

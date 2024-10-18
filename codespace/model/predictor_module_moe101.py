@@ -6,6 +6,71 @@ from codespace.model.multihead_attention_transformer import _get_activation_fn
 from codespace.model.gate_net import GateNet
 
 
+class expert0(nn.Module):  # for x1
+    def __init__(self, input_num, input_dim):
+        super().__init__()
+        self.fc1 = nn.Linear(input_dim * input_num, input_dim)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(input_dim, input_dim)
+
+    def forward(self, input):  # [6,32,512]
+        x = input[:3]  # 3,32,512
+        x = torch.einsum("LBD->BLD", x).flatten(1)  # 32,512*3
+        x = self.fc1(x)  # 32,512
+        x = self.relu(x)
+        x = self.fc2(x)  # 32,512
+        return x
+
+
+class expert1(nn.Module):  # for x2
+    def __init__(self, input_num, input_dim):
+        super().__init__()
+        self.fc1 = nn.Linear(input_dim * input_num, input_dim)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(input_dim, input_dim)
+
+    def forward(self, input):  # [6,32,512]
+        x = input[3:]  # 3,32,512
+        x = torch.einsum("LBD->BLD", x).flatten(1)  # 32,512*3
+        x = self.fc1(x)  # 32,512
+        x = self.relu(x)
+        x = self.fc2(x)  # 32,512
+        return x
+
+
+class expert2(nn.Module):  # for x1 cat x2
+    def __init__(self, input_num, input_dim):
+        super().__init__()
+        self.fc1 = nn.Linear(input_dim * input_num, input_dim)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(input_dim, input_dim)
+
+    def forward(self, input):  # [6,32,512]
+        x = torch.einsum("LBD->BLD", input).flatten(1)  # 32,512*6
+        x = self.fc1(x)  # 32,512
+        x = self.relu(x)
+        x = self.fc2(x)  # 32,512
+        return x
+
+
+class expert3(nn.Module):  # for a*x1 cat b*x2
+    def __init__(self, input_num, input_dim):
+        super().__init__()
+        self.fc1 = nn.Linear(input_dim * input_num, input_dim)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(input_dim, input_dim)
+        self.a = nn.Parameter(torch.randn(1))
+        self.b = nn.Parameter(torch.randn(1))
+
+    def forward(self, input):  # [6,32,512]
+        x = torch.cat([input[:3] * self.a, input[3:] * self.b], dim=0)  # 6,32,512
+        x = torch.einsum("LBD->BLD", x).flatten(1)  # 32,512*6
+        x = self.fc1(x)  # 32,512
+        x = self.relu(x)
+        x = self.fc2(x)  # 32,512
+        return x
+
+
 class Fusion_Model39(nn.Module):
     def __init__(self, args, dim_feedforward):
         super().__init__()
@@ -45,19 +110,12 @@ class FC_Decoder(nn.Module):
 
         self.output_layer3 = nn.Linear(dim_feedforward // input_num, num_class)
 
-    def forward(self, hs):  # hs[3, 32, 512]
-        # 维度转换 第0维和第1维互换
-        hs = hs.permute(1, 0, 2)  # [32, 3, 512]
-        # 按第一维度展开
-        hs = hs.flatten(1)  # [32,1536]
-        # 默认(512*2,512//2)，//表示下取整
-        hs = self.output_layer1(hs)
+    def forward(self, hs):  # hs[32, 512]
+        hs = self.output_layer1(hs)  # 32,512
         # sigmoid
         hs = self.activation1(hs)
         hs = self.dropout1(hs)
-        # (512//2,GO标签数)
-        out = self.output_layer3(hs)
-        # 后面还需要一个sigmoid，在测试输出后面直接加了
+        out = self.output_layer3(hs)  # 32,45
         return out
 
 
@@ -82,9 +140,16 @@ class Predictor(nn.Module):
 
         # self.fusion_model17 = Fusion_Model17(args, dim_feedforward)
         # self.fusion_model39 = Fusion_Model39(args, dim_feedforward)
-        self.gate = GateNet(dim_feedforward * 6, 6, hard=True)
+        self.gate = GateNet(dim_feedforward * 6, 4, hard=True)
         self.fc_decoder = FC_Decoder(
-            num_class, dim_feedforward, activation, dropout, input_num=6
+            num_class, dim_feedforward, activation, dropout, input_num=1
+        )
+        self.expert0 = expert0(3, dim_feedforward)
+        self.expert1 = expert1(3, dim_feedforward)
+        self.expert2 = expert2(6, dim_feedforward)
+        self.expert3 = expert3(6, dim_feedforward)
+        self.expert_list = nn.ModuleList(
+            [self.expert0, self.expert1, self.expert2, self.expert3]
         )
 
     def forward(self, src):
@@ -156,11 +221,11 @@ class Predictor(nn.Module):
 
             ppi_feature_output = (
                 self.ppi_feature_pre_model.transformerEncoder.encoder.layers[num](
-                    ppi_feature_encoder_output
+                    ppi_feature_encoder_output, seq_encoder_output
                 )
             )
             seq_output = self.seq_pre_model.transformerEncoder.encoder.layers[num](
-                seq_encoder_output
+                seq_encoder_output, ppi_feature_encoder_output
             )
             ppi_feature_encoder_output = ppi_feature_output
             seq_encoder_output = seq_output
@@ -177,12 +242,33 @@ class Predictor(nn.Module):
 
         fusion_hs = torch.cat([fusion_model17, hs_model39], dim=0)  # 6,32,512
         fusion_hs_flatten = torch.einsum("LBD->BLD", fusion_hs).flatten(1)  # 32,512*6
-        fusion_hs_permuted = torch.einsum("LBD->BLD", fusion_hs)  # 32,6,512
-        weight = self.gate(fusion_hs_flatten).unsqueeze(-1)  # 32,6,1
-        weighted_gate_hs = fusion_hs_permuted * weight  # 32, 6, 512
-        weighted_gate_hs = torch.einsum("BLD->LBD", weighted_gate_hs)  # 6,32,512
-        fc_output = self.fc_decoder(weighted_gate_hs)  # 32,45
-        return hs_fc, fc_output, fusion_model17, hs_model39, weighted_gate_hs
+        weight = self.gate(fusion_hs_flatten)  # 32,4
+        # weight的形状为 [32, 4, 1]，对应的是批次大小为32，每个输入的专家权重
+
+        # 计算每个专家的输出
+        expert_outputs = []
+        for i, expert in enumerate(self.expert_list):
+            expert_output = expert(fusion_hs)  # expert_output 形状为 [32, 512]
+            expert_outputs.append(expert_output.unsqueeze(0))  # 1, 32, 512
+
+        # 将所有专家输出堆叠在一起，形状变为 [4, 32, 512]
+        expert_outputs = torch.cat(expert_outputs, dim=0)  # 4, 32, 512
+
+        # 使用 torch.einsum 正确地计算加权专家输出
+        # weight的形状是 [32, 4]，expert_outputs的形状是 [4, 32, 512]，希望输出为 [32, 512]
+        # einsum: "bi,ibd->bd" 表示对 `i` 维度（专家数量）进行求和，剩下的是批次 `b` 和输出维度 `d`
+        selected_expert_output = torch.einsum(
+            "bi,ibd->bd", weight, expert_outputs
+        )  # 32, 512
+
+        fc_output = self.fc_decoder(selected_expert_output)  # 32,45
+        return (
+            hs_fc,
+            fc_output,
+            fusion_model17,
+            hs_model39,
+            selected_expert_output,
+        )  # 前馈，分类，上，下，门控后
 
 
 def build_predictor(seq_pre_model, ppi_feature_pre_model, pre_model17, args):

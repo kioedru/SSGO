@@ -19,16 +19,13 @@ search_space = {
     "lr": {"_type": "loguniform", "_value": [1e-5, 0.1]},
     "pre_lr": {"_type": "loguniform", "_value": [1e-5, 0.1]},
     "seq_pre_lr": {"_type": "loguniform", "_value": [1e-5, 0.1]},
-    # "pre_lr_model17": {"_type": "loguniform", "_value": [1e-5, 0.1]},
-    # "seq_pre_lr_model17": {"_type": "loguniform", "_value": [1e-5, 0.1]},
     "dropout": {"_type": "uniform", "_value": [0.1, 0.5]},
-    # "lr_model17": {"_type": "loguniform", "_value": [1e-5, 0.1]},
-    # "lr_model39": {"_type": "loguniform", "_value": [1e-5, 0.1]},
 }
+
 experiment = Experiment("local")
 
 # 配置 trial
-experiment.config.trial_command = f"python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_final/finetune82_soft.py --model_num 82_soft --seed 1329765519 --seq_feature seq1024 --aspect P --num_class 45 --device cuda:1 --nni True"
+experiment.config.trial_command = f"python -u /home/Kioedru/code/SSGO/codespace/finetune/moe/finetune105.py --model_num 105 --seed 1329765522 --seq_feature seq1024 --aspect P --num_class 45 --device cuda:0 --nni True"
 experiment.config.trial_code_directory = "."
 
 # 配置搜索空间
@@ -36,13 +33,13 @@ experiment.config.search_space = search_space
 
 # 配置调优算法
 experiment.config.tuner.name = "Random"
-experiment.config.tuner.class_args["seed"] = 1329765519
+experiment.config.tuner.class_args["seed"] = 1329765522
 # experiment.config.tuner.name = "TPE"
 # experiment.config.tuner.class_args["optimize_mode"] = "maximize"
 # 共尝试10组超参，并且每次并行地评估2组超参。
 experiment.config.max_trial_number = 200
-experiment.config.trial_concurrency = 2
+experiment.config.trial_concurrency = 1
 
-experiment.run(8101)
+experiment.run(8100)
 
-# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/2_1_final/nni_P.py &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/finetune/moe/nni_P.py &
