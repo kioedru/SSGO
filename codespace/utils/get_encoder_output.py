@@ -18,7 +18,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.q2l.q2l_0.predictor_module_q2l import build_predictor
+from codespace.q2l.q2l_3.predictor_module_q2l import build_predictor
 
 
 class multimodesDataset(torch.utils.data.Dataset):
@@ -409,71 +409,19 @@ def get_args():
 import nni
 
 
-# nohup python -u /home/Kioedru/code/SSGO/codespace/q2l/q2l_0/finetune.py --device cuda:0 --seed 1329765522 --seq_feature seq1024 --aspect P --num_class 45 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/q2l/q2l_0/finetune.py --device cuda:0 --seed 1329765522 --seq_feature seq1024 --aspect F --num_class 38 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/q2l/q2l_0/finetune.py --device cuda:0 --seed 1329765522 --seq_feature seq1024 --aspect C --num_class 35 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/utils/get_encoder_output.py --device cuda:1 --seed 1329765522 --aspect P --num_class 45 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/utils/get_encoder_output.py --device cuda:1 --seed 1329765522 --aspect F --num_class 38 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/utils/get_encoder_output.py --device cuda:1 --seed 1329765522 --aspect C --num_class 35 &
 
 
 def main():
     args = get_args()
-    if args.seed is not None:
-        random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed(args.seed)
-        torch.cuda.manual_seed_all(args.seed)
-        np.random.seed(args.seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-    params = {
-        "lr": 1e-4,
-        "dropout": 0.3,
-        "pre_lr": 1e-5,
-        # "seq_pre_lr": 1e-5,
-    }
-    # params = {
-    #     "lr": 0.01,
-    #     "pre_lr": 0.001,
-    #     "seq_pre_lr": 0.0007,
-    #     "dropout": 0.13,
-    # }
-    if args.param:
-        params = {
-            "lr": args.lr,
-            "dropout": args.dropout,
-            "pre_lr": args.pre_lr,
-            # "seq_pre_lr": args.seq_pre_lr,
-        }
-    # 获取需要评估的超参
-    if args.nni:
-        optimized_params = nni.get_next_parameter()
-        params.update(optimized_params)
-    print(params)
 
-    # 需注释的参数
-    # args.seq_feature = "seq1024"
-    # args.fusion = "enhanced"  # transformer bimamba mamba enhanced
-    # args.aspect = "P"
-    # args.num_class = int(45)
-    # args.seed = int(
-    #     1329765522
-    # )  #  1329765522  132976111  1329765525    1329765529  1329765519
-
-    args.input_num = 3
-    args.epochs = 100
-    args.pretrain_update = 1  # 0全更新，1不更新，2更新一半
-    if args.pretrain_update == 0:
-        args.update_epoch = args.epochs
-    elif args.pretrain_update == 1:
-        args.update_epoch = 0
-    elif args.pretrain_update == 2:
-        args.update_epoch = int(args.epochs / 2)
-
-    froze_name = {0: "thaw", 1: "frozen", 2: "half"}
     args.org = "9606"
 
-    args.model_name = f"q2l_0"
     # /home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq480_only.pkl
-    # args.seq_model_name = f"transformer_{args.seq_feature}_only"
+    args.seq_model_backbone = "bimamba"
+    args.seq_model_name = f"{args.seq_model_backbone}_{args.seq_feature}_only"
     # /home/Kioedru/code/SSGO/codespace/pretrain/bimamba/9606/bimamba.pkl
     args.ppi_feature_model_name = f"transformer"
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
@@ -483,24 +431,14 @@ def main():
     else:
         args.path = path_in_Kioedru
 
-    args.finetune_path = os.path.join(
-        args.path,
-        "q2l",
-        args.model_name,
-        f"{args.org}_ppi+feature+{args.ppi_feature_model_name}_{froze_name[args.pretrain_update]}",
-        args.org,
-        args.aspect,
-        f"{args.seed}",
-        f"{args.update_epoch}:{args.epochs}",
-    )
     # 预训练模型：Sequence的路径
-    # args.seq_pretrained_model = os.path.join(
-    #     args.path,
-    #     "pretrain",
-    #     "one_feature_only",
-    #     args.org,
-    #     f"{args.seq_model_name}.pkl",
-    # )
+    args.seq_pretrained_model = os.path.join(
+        args.path,
+        "pretrain",
+        "one_feature_only",
+        args.org,
+        f"{args.seq_model_name}.pkl",
+    )
     # 预训练模型：ppi+亚细胞+结构域的路径
     args.ppi_feature_pretrained_model = os.path.join(
         args.path,
@@ -509,28 +447,7 @@ def main():
         args.org,
         f"{args.ppi_feature_model_name}.pkl",
     )
-    args.finetune_model_path = os.path.join(args.finetune_path, f"epoch_model")
-    check_and_create_folder(args.finetune_model_path)
 
-    # args.finetune_model = f"/home/kioedru/code/CFAGO/CFAGO_seq/result/model/finetune_model_{args.aspect}_{model_name}.pkl"
-
-    args.epoch_performance_path = os.path.join(
-        args.finetune_path,
-        f"epoch_performance_lr:{params['lr']},dropout:{params['dropout']},pre_lr:{params['pre_lr']}.csv",
-    )
-
-    args.nheads = int(8)
-    args.dropout = params["dropout"]
-    args.attention_layers = int(6)
-    args.gamma_pos = int(0)
-    args.gamma_neg = int(2)
-    args.batch_size = int(32)
-    args.lr = params["lr"]
-    args.pre_lr = params["pre_lr"]
-    # args.seq_pre_lr = params["seq_pre_lr"]
-
-    # 使用一个隐藏层
-    args.h_n = 1
     return main_worker(args)
 
 
@@ -547,8 +464,7 @@ def main_worker(args):
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=args.batch_size,
-        # (train_sampler is None)输出为true，因此会打乱数据
-        shuffle=(train_sampler is None),
+        shuffle=False,
         # 指定用多少个子进程来加载数据，CFAGO中默认为32
         num_workers=args.workers,
         # 是否将加载的数据保存在锁页内存中（以占用更多内存的代价，加快数据从CPU到GPU的转移速度）
@@ -566,225 +482,88 @@ def main_worker(args):
         sampler=test_sampler,
     )
 
-    # 定义损失函数
-    loss = aslloss_adaptive.AsymmetricLossOptimized(
-        gamma_neg=args.gamma_neg,
-        gamma_pos=args.gamma_pos,
-        clip=args.loss_clip,
-        disable_torch_grad_focal_loss=args.dtgfl,
-        eps=args.eps,
-    )
-
-    # optimizer
-    args.lr_mult = args.batch_size / 32
-
     torch.cuda.empty_cache()
 
     ppi_feature_pre_model = torch.load(
         args.ppi_feature_pretrained_model, map_location=args.device
     )
-    # /home/Kioedru/code/SSGO/codespace/pretrain/seq480_gan_encoder/9606/P/seq480_gan_encoder.pkl
-    # seq_pre_model = torch.load(args.seq_pretrained_model, map_location=args.device)
-    # 创建预测模型
-    predictor_model = build_predictor(args, ppi_feature_pre_model=ppi_feature_pre_model)
+    seq_pre_model = torch.load(args.seq_pretrained_model, map_location=args.device)
 
-    # if args.optim == 'AdamW':
-    # 参数字典列表，存储预训练模型和fc_decoder层的参数
-    predictor_model_param_dicts = [
-        # 预训练模型的参数使用较低的学习率1e-5（因为已经训练好了，无需大幅度调整）
-        {
-            "params": [
-                p
-                for n, p in predictor_model.ppi_feature_pre_model.named_parameters()
-                if p.requires_grad
-            ],
-            "lr": args.pre_lr,
-        },
-        # {
-        #     "params": [
-        #         p
-        #         for n, p in predictor_model.seq_pre_model.named_parameters()
-        #         if p.requires_grad
-        #     ],
-        #     "lr": args.seq_pre_lr,
-        # },
-        # fc_decoder层的参数使用默认学习率
-        {
-            "params": [
-                p
-                for n, p in predictor_model.fc_decoder.named_parameters()
-                if p.requires_grad
-            ]
-        },
-        {
-            "params": [
-                p
-                for n, p in predictor_model.query_embed.named_parameters()
-                if p.requires_grad
-            ]
-        },
-        {
-            "params": [
-                p
-                for n, p in predictor_model.transformer.named_parameters()
-                if p.requires_grad
-            ]
-        },
-    ]
-
-    # 优化器，使用AdamW算法
-    predictor_model_optimizer = getattr(torch.optim, "AdamW")(
-        predictor_model_param_dicts,
-        lr=args.lr_mult * args.lr,
-        betas=(0.9, 0.999),
-        eps=1e-08,
-        weight_decay=0,
-    )
-    # 学习率调度器 指定优化器，step_size=50，默认gamma=0.1，每隔step_size个周期就将每个参数组的学习率*gamma
-    if args.nni:
-        steplr = lr_scheduler.StepLR(predictor_model_optimizer, 50)
-    else:
-        steplr = lr_scheduler.StepLR(predictor_model_optimizer, 50)
-    patience = 10
-    changed_lr = False
-
-    # 每隔2500个epoch就把学习率乘0.01
     finetune(
         args,
         train_loader,
         test_loader,
-        predictor_model,
-        loss,
-        predictor_model_optimizer,
-        steplr,
-        args.epochs,
+        ppi_feature_pre_model,
+        seq_pre_model,
         args.device,
     )
 
-    if not args.nni:
-        # 保存微调模型
-        torch.save(
-            predictor_model.state_dict(),
-            os.path.join(args.finetune_path, f"final_model.pkl"),
-        )
 
-
+@torch.no_grad()
 def finetune(
     args,
     data_loader,
     test_loader,
-    model,
-    loss,
-    optimizer,
-    steplr,
-    num_epochs,
+    ppi_feature_model,
+    seq_model,
     device,
 ):
-
-    net = model.to(device)
-    net.train()
+    ppi_feature_model = ppi_feature_model.to(device)
+    seq_model = seq_model.to(device)
     print("training on", device)
-    for epoch in range(num_epochs):
-        if args.pretrain_update == 1:  # 不更新参数
-            # for p in model.seq_pre_model.parameters():
-            #     p.requires_grad = False
-            for p in model.ppi_feature_pre_model.parameters():
-                p.requires_grad = False
-        if args.pretrain_update == 2:  # 更新后半部分参数
-            if epoch >= (args.epochs / 2):
-                # for p in model.seq_pre_model.parameters():
-                #     p.requires_grad = True
-                for p in model.ppi_feature_pre_model.parameters():
-                    p.requires_grad = True
-            else:
-                # for p in model.seq_pre_model.parameters():
-                #     p.requires_grad = False
-                for p in model.ppi_feature_pre_model.parameters():
-                    p.requires_grad = False
-        if args.pretrain_update == 0:  # 更新全部参数
-            # for p in model.seq_pre_model.parameters():
-            #     p.requires_grad = True
-            for p in model.ppi_feature_pre_model.parameters():
-                p.requires_grad = True
-        start = time.time()
-        batch_count = 0
-        train_l_sum = 0.0
-        for protein_data, label in data_loader:
 
-            protein_data[0] = protein_data[0].to(device)
-            protein_data[1] = protein_data[1].to(device)
-            protein_data[2] = protein_data[2].to(device)
-            label = label.to(device)
+    all_ppi_feature_embed = []
+    all_seq_embed = []
+    for protein_data, label in data_loader:
 
-            rec, output = net(protein_data)
-            l = loss(output, label, rec)
-            optimizer.zero_grad()
-            l.backward()
-            train_l_sum += l.cpu().item()
-            # record loss
-            optimizer.step()  # 优化方法
-            batch_count += 1
-        steplr.step()
-
-        # 每轮都测试
-        with torch.no_grad():
-            perf = evaluate(test_loader, net, args.device)
-            perf["default"] = perf["m-aupr"]
-            if not args.nni:
-                perf_write_to_csv(
-                    args,
-                    epoch,
-                    perf,
-                    loss=train_l_sum / batch_count,
-                    time=time.time() - start,
-                    lr=optimizer.param_groups[2]["lr"],
-                )
-
-            if args.nni:
-                nni.report_intermediate_result(perf)
-
-        # 保存每轮的model参数字典
-        # torch.save(
-        #     net.state_dict(), os.path.join(args.finetune_model_path, f"{epoch}.pkl")
-        # )
-    if args.nni:
-        nni.report_final_result(perf)
-
-
-from codespace.utils.evaluate_performance import evaluate_performance
-
-
-@torch.no_grad()
-def evaluate(test_loader, predictor_model, device):
-
-    # switch to evaluate mode
-    predictor_model.eval()
-    all_output_sm = []
-    all_label = []
-    predictor_model = predictor_model.to(device)
-    for proteins, label in test_loader:
-        proteins[0] = proteins[0].to(device)
-        proteins[1] = proteins[1].to(device)
-        proteins[2] = proteins[2].to(device)
+        protein_data[0] = protein_data[0].to(device)
+        protein_data[1] = protein_data[1].to(device)
+        protein_data[2] = protein_data[2].to(device)
         label = label.to(device)
+        ppi_feature_src = protein_data  # 2,32,512
+        seq_src = protein_data[2].unsqueeze(0)  # 1,32,512
+        _, hs_ppi_feature = ppi_feature_model(ppi_feature_src)  # 2,32,512
+        _, hs_seq = seq_model(seq_src)
+        all_ppi_feature_embed.append(hs_ppi_feature.detach().cpu())
+        all_seq_embed.append(hs_seq.detach().cpu())
 
-        # compute output
-        rec, output = predictor_model(proteins)
-        output_sm = torch.nn.functional.sigmoid(output)
-
-        # collect output and label for metric calculation
-        all_output_sm.append(output_sm.detach().cpu())
-        all_label.append(label.detach().cpu())
-
-    all_output_sm = torch.cat(all_output_sm, 0).numpy()
-    all_label = torch.cat(all_label, 0).numpy()
-
-    # calculate metrics
-    perf = evaluate_performance(
-        all_label, all_output_sm, (all_output_sm > 0.5).astype(int)
+    all_ppi_feature_embed = torch.cat(all_ppi_feature_embed, 1).numpy()
+    all_seq_embed = torch.cat(all_seq_embed, 1).numpy()
+    embed_path = "/home/Kioedru/code/SSGO/data/encoder"
+    pd.to_pickle(
+        all_ppi_feature_embed,
+        os.path.join(embed_path, f"train_{args.aspect}_ppi_feature_embed.pkl"),
+    )
+    pd.to_pickle(
+        all_seq_embed, os.path.join(embed_path, f"train_{args.aspect}_seq_embed.pkl")
     )
 
-    return perf
+    all_ppi_feature_embed = []
+    all_seq_embed = []
+    for protein_data, label in test_loader:
+
+        protein_data[0] = protein_data[0].to(device)
+        protein_data[1] = protein_data[1].to(device)
+        protein_data[2] = protein_data[2].to(device)
+        label = label.to(device)
+        ppi_feature_src = protein_data  # 2,32,512
+        seq_src = protein_data[2].unsqueeze(0)  # 1,32,512
+        _, hs_ppi_feature = ppi_feature_model(ppi_feature_src)  # 2,32,512
+        _, hs_seq = seq_model(seq_src)
+        all_ppi_feature_embed.append(hs_ppi_feature.detach().cpu())
+        all_seq_embed.append(hs_seq.detach().cpu())
+
+    all_ppi_feature_embed = torch.cat(all_ppi_feature_embed, 1).numpy()
+    all_seq_embed = torch.cat(all_seq_embed, 1).numpy()
+    embed_path = "/home/Kioedru/code/SSGO/data/encoder"
+    pd.to_pickle(
+        all_ppi_feature_embed,
+        os.path.join(embed_path, f"test_{args.aspect}_ppi_feature_embed.pkl"),
+    )
+    pd.to_pickle(
+        all_seq_embed, os.path.join(embed_path, f"test_{args.aspect}_seq_embed.pkl")
+    )
+    print("ok")
 
 
 if __name__ == "__main__":

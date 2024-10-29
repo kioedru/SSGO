@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import math
 
-from codespace.q2l.q2l_0.q2l_transformer import q2l_transformer, _get_activation_fn
+from codespace.q2l.q2l_2.q2l_transformer import q2l_transformer, _get_activation_fn
 
 
 class GroupWiseLinear(nn.Module):
@@ -76,7 +76,7 @@ class Predictor(nn.Module):
         input_num=3,
     ):
         super().__init__()
-        # self.seq_pre_model = seq_pre_model
+        self.seq_pre_model = seq_pre_model
         self.ppi_feature_pre_model = ppi_feature_pre_model
         self.transformer = q2l_transformer(
             dim_feedforward=dim_feedforward,
@@ -86,24 +86,27 @@ class Predictor(nn.Module):
             activation=activation,
         )
         self.query_embed = nn.Embedding(num_class, dim_feedforward)
-        # self.fc_decoder = GroupWiseLinear(num_class, dim_feedforward, bias=True)
-        self.fc_decoder = FC_Decoder(
-            num_class=num_class,
-            dim_feedforward=dim_feedforward,
-            activation=activation,
-            dropout=dropout,
-            input_num=input_num,
-        )
+        # self.learnable_param = nn.Parameter(torch.Tensor(num_class, dim_feedforward))
+        # nn.init.xavier_uniform_(self.learnable_param)
+        self.fc_decoder = GroupWiseLinear(num_class, dim_feedforward, bias=True)
+        # self.fc_decoder = FC_Decoder(
+        #     num_class=num_class,
+        #     dim_feedforward=dim_feedforward,
+        #     activation=activation,
+        #     dropout=dropout,
+        #     input_num=input_num,
+        # )
 
     def forward(self, src):
-        ppi_feature_src = src  # 2，32，512
-        # seq_src = src[2].unsqueeze(0)  # 1，32，512
+        ppi_feature_src = src  # 2,32,512
+        seq_src = src[2].unsqueeze(0)  # 1,32,512
         _, hs_ppi_feature = self.ppi_feature_pre_model(ppi_feature_src)  # 2,32,512
-        # _, hs_seq = self.seq_pre_model(seq_src)
+        _, hs_seq = self.seq_pre_model(seq_src)
         # hs = torch.cat([hs_ppi_feature, hs_seq], dim=0)  # 4,32,512
         query_input = self.query_embed.weight  # 45,512
-        hs = self.transformer(hs_ppi_feature, query_input)  # B,K,d 45,32,512
-        out = self.fc_decoder(hs[-1])
+        hs = self.transformer(hs_ppi_feature, hs_seq, query_input)  # B,K,d 45,32,512
+        out = self.fc_decoder(torch.einsum("KBD->BKD", hs))  # 32,45
+        # out = self.fc_decoder(hs[-1])
         return hs, out
 
 

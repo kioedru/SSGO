@@ -18,7 +18,7 @@ from codespace.model import aslloss_adaptive
 
 from sklearn.preprocessing import minmax_scale
 import csv
-from codespace.q2l.q2l_0.predictor_module_q2l import build_predictor
+from codespace.q2l.q2l_3.predictor_module_q2l import build_predictor
 
 
 class multimodesDataset(torch.utils.data.Dataset):
@@ -409,9 +409,9 @@ def get_args():
 import nni
 
 
-# nohup python -u /home/Kioedru/code/SSGO/codespace/q2l/q2l_0/finetune.py --device cuda:0 --seed 1329765522 --seq_feature seq1024 --aspect P --num_class 45 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/q2l/q2l_0/finetune.py --device cuda:0 --seed 1329765522 --seq_feature seq1024 --aspect F --num_class 38 &
-# nohup python -u /home/Kioedru/code/SSGO/codespace/q2l/q2l_0/finetune.py --device cuda:0 --seed 1329765522 --seq_feature seq1024 --aspect C --num_class 35 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/q2l/q2l_3/finetune.py --device cuda:1 --seed 1329765522 --aspect P --num_class 45 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/q2l/q2l_3/finetune.py --device cuda:1 --seed 1329765522 --aspect F --num_class 38 &
+# nohup python -u /home/Kioedru/code/SSGO/codespace/q2l/q2l_3/finetune.py --device cuda:1 --seed 1329765522 --aspect C --num_class 35 &
 
 
 def main():
@@ -428,20 +428,13 @@ def main():
         "lr": 1e-4,
         "dropout": 0.3,
         "pre_lr": 1e-5,
-        # "seq_pre_lr": 1e-5,
     }
-    # params = {
-    #     "lr": 0.01,
-    #     "pre_lr": 0.001,
-    #     "seq_pre_lr": 0.0007,
-    #     "dropout": 0.13,
-    # }
+
     if args.param:
         params = {
             "lr": args.lr,
             "dropout": args.dropout,
             "pre_lr": args.pre_lr,
-            # "seq_pre_lr": args.seq_pre_lr,
         }
     # 获取需要评估的超参
     if args.nni:
@@ -460,7 +453,7 @@ def main():
 
     args.input_num = 3
     args.epochs = 100
-    args.pretrain_update = 1  # 0全更新，1不更新，2更新一半
+    args.pretrain_update = 2  # 0全更新，1不更新，2更新一半
     if args.pretrain_update == 0:
         args.update_epoch = args.epochs
     elif args.pretrain_update == 1:
@@ -471,9 +464,10 @@ def main():
     froze_name = {0: "thaw", 1: "frozen", 2: "half"}
     args.org = "9606"
 
-    args.model_name = f"q2l_0"
+    args.model_name = f"q2l_3"
     # /home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq480_only.pkl
-    # args.seq_model_name = f"transformer_{args.seq_feature}_only"
+    args.seq_model_backbone = "bimamba"
+    args.seq_model_name = f"{args.seq_model_backbone}_{args.seq_feature}_only"
     # /home/Kioedru/code/SSGO/codespace/pretrain/bimamba/9606/bimamba.pkl
     args.ppi_feature_model_name = f"transformer"
     path_in_kioedru = f"/home/kioedru/code/SSGO/codespace"
@@ -487,20 +481,20 @@ def main():
         args.path,
         "q2l",
         args.model_name,
-        f"{args.org}_ppi+feature+{args.ppi_feature_model_name}_{froze_name[args.pretrain_update]}",
+        f"{args.org}_ppi+feature+{args.ppi_feature_model_name}_seq+{args.seq_model_backbone}_{froze_name[args.pretrain_update]}",
         args.org,
         args.aspect,
         f"{args.seed}",
         f"{args.update_epoch}:{args.epochs}",
     )
     # 预训练模型：Sequence的路径
-    # args.seq_pretrained_model = os.path.join(
-    #     args.path,
-    #     "pretrain",
-    #     "one_feature_only",
-    #     args.org,
-    #     f"{args.seq_model_name}.pkl",
-    # )
+    args.seq_pretrained_model = os.path.join(
+        args.path,
+        "pretrain",
+        "one_feature_only",
+        args.org,
+        f"{args.seq_model_name}.pkl",
+    )
     # 预训练模型：ppi+亚细胞+结构域的路径
     args.ppi_feature_pretrained_model = os.path.join(
         args.path,
@@ -583,10 +577,11 @@ def main_worker(args):
     ppi_feature_pre_model = torch.load(
         args.ppi_feature_pretrained_model, map_location=args.device
     )
-    # /home/Kioedru/code/SSGO/codespace/pretrain/seq480_gan_encoder/9606/P/seq480_gan_encoder.pkl
-    # seq_pre_model = torch.load(args.seq_pretrained_model, map_location=args.device)
+    seq_pre_model = torch.load(args.seq_pretrained_model, map_location=args.device)
     # 创建预测模型
-    predictor_model = build_predictor(args, ppi_feature_pre_model=ppi_feature_pre_model)
+    predictor_model = build_predictor(
+        args, seq_pre_model=seq_pre_model, ppi_feature_pre_model=ppi_feature_pre_model
+    )
 
     # if args.optim == 'AdamW':
     # 参数字典列表，存储预训练模型和fc_decoder层的参数
@@ -600,14 +595,14 @@ def main_worker(args):
             ],
             "lr": args.pre_lr,
         },
-        # {
-        #     "params": [
-        #         p
-        #         for n, p in predictor_model.seq_pre_model.named_parameters()
-        #         if p.requires_grad
-        #     ],
-        #     "lr": args.seq_pre_lr,
-        # },
+        {
+            "params": [
+                p
+                for n, p in predictor_model.seq_pre_model.named_parameters()
+                if p.requires_grad
+            ],
+            "lr": args.pre_lr,
+        },
         # fc_decoder层的参数使用默认学习率
         {
             "params": [
@@ -616,13 +611,7 @@ def main_worker(args):
                 if p.requires_grad
             ]
         },
-        {
-            "params": [
-                p
-                for n, p in predictor_model.query_embed.named_parameters()
-                if p.requires_grad
-            ]
-        },
+        {"params": [p for p in predictor_model.query_embed if p.requires_grad]},
         {
             "params": [
                 p
@@ -686,24 +675,24 @@ def finetune(
     print("training on", device)
     for epoch in range(num_epochs):
         if args.pretrain_update == 1:  # 不更新参数
-            # for p in model.seq_pre_model.parameters():
-            #     p.requires_grad = False
+            for p in model.seq_pre_model.parameters():
+                p.requires_grad = False
             for p in model.ppi_feature_pre_model.parameters():
                 p.requires_grad = False
         if args.pretrain_update == 2:  # 更新后半部分参数
             if epoch >= (args.epochs / 2):
-                # for p in model.seq_pre_model.parameters():
-                #     p.requires_grad = True
+                for p in model.seq_pre_model.parameters():
+                    p.requires_grad = True
                 for p in model.ppi_feature_pre_model.parameters():
                     p.requires_grad = True
             else:
-                # for p in model.seq_pre_model.parameters():
-                #     p.requires_grad = False
+                for p in model.seq_pre_model.parameters():
+                    p.requires_grad = False
                 for p in model.ppi_feature_pre_model.parameters():
                     p.requires_grad = False
         if args.pretrain_update == 0:  # 更新全部参数
-            # for p in model.seq_pre_model.parameters():
-            #     p.requires_grad = True
+            for p in model.seq_pre_model.parameters():
+                p.requires_grad = True
             for p in model.ppi_feature_pre_model.parameters():
                 p.requires_grad = True
         start = time.time()
