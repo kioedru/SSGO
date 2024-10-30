@@ -72,33 +72,16 @@ class CLIProt(nn.Module):
         self.go_feature = go_feature
         self.Protein_Adapter = Protein_Adapter(protein_dim, latent_dim)
         self.GO_Adapter = GO_Adapter(go_dim, latent_dim)
-        self.Seq_Encoder = torch.load(
-            "/home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq1024_only.pkl",
-            map_location="cuda:0",
-        )
-        self.PPI_Feature_Encoder = torch.load(
-            "/home/Kioedru/code/SSGO/codespace/pretrain/transformer/9606/transformer.pkl",
-            map_location="cuda:0",
-        )
+
         self.decoder = FC_Decoder()
 
-    def Encoder(self, protein_features):
-        ppi_feature_src = protein_features  # 2,32,512
-        seq_src = protein_features[2].unsqueeze(0)  # 1,32,512
-        _, hs_ppi_feature = self.PPI_Feature_Encoder(ppi_feature_src)  # 2,32,512
-        _, hs_seq = self.Seq_Encoder(seq_src)
-        hs = torch.cat([hs_ppi_feature, hs_seq], dim=0)
-        hs = torch.einsum("LBD->BLD", hs)  # 32,3,512
-        return hs
-
     def forward(self, protein_features):
-        align_features = self.Encoder(protein_features)
-        return self.decoder(align_features)
         p_embed = self.Protein_Adapter(protein_features)
+        # return self.decoder(protein_features)
         g_embed = self.GO_Adapter(self.go_feature)
         # normalize
-        p_embed = F.normalize(p_embed, p=2, dim=-1)
-        g_embed = F.normalize(g_embed, p=2, dim=-1)
+        # p_embed = F.normalize(p_embed, p=2, dim=-1)
+        # g_embed = F.normalize(g_embed, p=2, dim=-1)
 
         # 计算相似度矩阵 (点积)
         similarity = torch.matmul(p_embed, g_embed.T)
@@ -109,6 +92,13 @@ class CLIProt(nn.Module):
         logits: 模型的输出相似度矩阵 (batch_size, num_go_terms)
         labels: 真实标签 (batch_size, num_go_terms)
         """
+        # loss_fn = AsymmetricLossOptimized(
+        #     gamma_neg=2,
+        #     gamma_pos=0,
+        #     clip=0,
+        #     eps=1e-5,
+        #     disable_torch_grad_focal_loss=False,
+        # )
         loss_fn = AsymmetricLossOptimized()
         loss = loss_fn(logits, labels)
         return loss

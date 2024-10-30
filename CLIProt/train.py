@@ -13,7 +13,7 @@ import os
 
 from CLIProt.utils.get_dataset import get_dataset
 from CLIProt.utils.evaluate_performance import evaluate_performance
-
+from CLIProt.utils.summary import perf_write_to_csv
 from CLIProt.cliprot import CLIProt
 
 
@@ -51,6 +51,7 @@ def setting_args():
         default="/home/Kioedru/code/SSGO/CLIProt/train.log",
         help="Path to save the log file",
     )
+
     parser.add_argument(
         "--step_size",
         type=int,
@@ -140,14 +141,25 @@ def get_go_embed(aspect):
 
 
 # ===================== 训练和验证函数 =====================
-def train_one_epoch(model, loader, optimizer, device):
+def Encoder(protein_features, Seq_Encoder, PPI_Feature_Encoder):
+    ppi_feature_src = protein_features  # 2,32,512
+    seq_src = protein_features[2].unsqueeze(0)  # 1,32,512
+    _, hs_ppi_feature = PPI_Feature_Encoder(ppi_feature_src)  # 2,32,512
+    _, hs_seq = Seq_Encoder(seq_src)
+    hs = torch.cat([hs_ppi_feature, hs_seq], dim=0)
+    hs = torch.einsum("LBD->BLD", hs)  # 32,3,512
+    return hs
+
+
+def train_one_epoch(model, loader, optimizer, device, Seq_Encoder, PPI_Feature_Encoder):
     model.train()
     total_loss = 0
     for batch in tqdm(loader, desc="Training", leave=False):
         inputs = [tensor.to(device) for tensor in batch["protein_features"]]
         targets = batch["labels"].to(device)
         optimizer.zero_grad()
-        logits = model(inputs)
+        align_features = Encoder(inputs, Seq_Encoder, PPI_Feature_Encoder)
+        logits = model(align_features)
         loss = model.compute_loss(logits, targets)
         loss.backward()
         optimizer.step()
@@ -159,7 +171,7 @@ def train_one_epoch(model, loader, optimizer, device):
 
 
 @torch.no_grad()
-def evaluate(model, loader, device):
+def evaluate(model, loader, device, Seq_Encoder, PPI_Feature_Encoder):
     model.eval()
     all_outputs_sm = []
     all_labels = []
@@ -167,8 +179,9 @@ def evaluate(model, loader, device):
     for batch in tqdm(loader, desc="Evaluate", leave=False):
         inputs = [tensor.to(device) for tensor in batch["protein_features"]]
         targets = batch["labels"].to(device)
-        outputs = model(inputs)
-        outputs_sm = torch.nn.functional.sigmoid(outputs)
+        align_features = Encoder(inputs, Seq_Encoder, PPI_Feature_Encoder)
+        logits = model(align_features)
+        outputs_sm = torch.nn.functional.sigmoid(logits)
         all_outputs_sm.append(outputs_sm.detach().cpu())
         all_labels.append(targets.detach().cpu())
 
@@ -194,16 +207,35 @@ def main():
     model = CLIProt(go_feature, protein_dim=512, go_dim=256, latent_dim=512)
     model = model.to(device)
 
+    Seq_Encoder = torch.load(
+        "/home/Kioedru/code/SSGO/codespace/pretrain/one_feature_only/9606/transformer_seq1024_only.pkl",
+        map_location=args.device,
+    )
+    # PPI_Feature_Encoder = torch.load(
+    #     "/home/Kioedru/code/SSGO/codespace/pretrain/transformer/9606/transformer.pkl",
+    #     map_location=args.device,
+    # )
+    sys.path.append("/home/Kioedru/code/SSGO/CFAGO-code")
+    model_path = "/home/Kioedru/code/SSGO/human_attention_layers_6_lr_1e-05_seed_1329765522_activation_gelu_model.pkl"
+    PPI_Feature_Encoder = torch.load(model_path)
     # ===================== 损失函数 & 优化器 =====================
 
     optimizer = optim.AdamW(
         model.parameters(),
         lr=args.lr,
-        weight_decay=0,
+        weight_decay=1e-4,
     )
-    scheduler = optim.lr_scheduler.StepLR(
-        optimizer, step_size=args.step_size, gamma=args.gamma
-    )
+    # 按轮数衰减
+    # scheduler = optim.lr_scheduler.StepLR(
+    #     optimizer, step_size=args.step_size, gamma=args.gamma
+    # )
+    # # 余弦退火
+    # scheduler = optim.lr_scheduler.CosineAnnealingLR(
+    #     optimizer, T_max=args.epochs, eta_min=0
+    # )
+
+    # 指数衰减
+    scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
     # ===================== 训练主循环 =====================
     best_Fmax = 0  # 保存最佳模型时的最高验证准确率
@@ -212,8 +244,10 @@ def main():
     for epoch in range(args.epochs):
         logger.info(f"Epoch [{epoch + 1}/{args.epochs}]")
 
-        train_loss = train_one_epoch(model, train_loader, optimizer, device)
-        metrics = evaluate(model, test_loader, device)
+        train_loss = train_one_epoch(
+            model, train_loader, optimizer, device, Seq_Encoder, PPI_Feature_Encoder
+        )
+        metrics = evaluate(model, test_loader, device, Seq_Encoder, PPI_Feature_Encoder)
 
         logger.info(f"Train Loss: {train_loss:.3f}")
         filtered_metrics = {k: v for k, v in metrics.items() if k != "M-aupr-labels"}

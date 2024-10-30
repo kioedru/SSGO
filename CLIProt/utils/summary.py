@@ -2,22 +2,22 @@ import os
 import csv
 
 
-def perf_write_to_csv(args, epoch, perf, loss, time, lr):
-    if not os.path.exists(args.epoch_performance_path):
-        with open(args.epoch_performance_path, "w") as f:
+def perf_write_to_csv(epoch_performance_path, epoch, perf, loss, time, lr):
+    if not os.path.exists(epoch_performance_path):
+        with open(epoch_performance_path, "w") as f:
             csv.writer(f).writerow(
-                ["epoch", "loss", "time", "lr", "m-aupr", "Fmax", "M-aupr", "F1", "acc"]
+                ["epoch", "loss", "time", "lr", "Fmax", "m-aupr", "M-aupr", "F1", "acc"]
             )
 
-    with open(args.epoch_performance_path, "a") as f:
+    with open(epoch_performance_path, "a") as f:
         csv.writer(f).writerow(
             [
                 epoch,
                 loss,
                 time,
                 lr,
-                perf["m-aupr"],
                 perf["Fmax"],
+                perf["m-aupr"],
                 perf["M-aupr"],
                 perf["F1"],
                 perf["acc"],
